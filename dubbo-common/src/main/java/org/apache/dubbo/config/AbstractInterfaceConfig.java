@@ -45,7 +45,7 @@ import static org.apache.dubbo.common.constants.CommonConstants.TIMESTAMP_KEY;
 
 /**
  * AbstractDefaultConfig
- *
+ * 抽象接口配置类
  * @export
  */
 public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
@@ -53,12 +53,13 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     private static final long serialVersionUID = -1559314110797223229L;
 
     /**
-     * Local impl class name for the service interface
+     * 设为true，表示使用缺省代理类名，即：接口名 + Local后缀，已废弃，请使用stub
      */
     protected String local;
 
     /**
-     * Local stub class name for the service interface
+     * 设为true，表示使用缺省代理类名，即：接口名 + Stub后缀，服务接口客户端本地代理类名，用于在客户端执行本地逻辑，
+     * 如本地缓存等，该本地代理类的构造函数必须允许传入远程代理对象，构造函数如：public XxxServiceStub(XxxService xxxService)
      */
     protected String stub;
 
@@ -68,29 +69,31 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     protected MonitorConfig monitor;
 
     /**
-     * Strategies for generating dynamic agents，there are two strategies can be choosed: jdk and javassist
+     * 生成动态代理方式，可选：jdk/javassist
      */
     protected String proxy;
 
     /**
-     * Cluster type
+     * 集群方式，可选：failover/failfast/failsafe/failback/forking
      */
     protected String cluster;
 
     /**
      * The {@code Filter} when the provider side exposed a service or the customer side references a remote service used,
      * if there are more than one, you can use commas to separate them
+     * 服务提供方远程调用过程拦截器名称，多个名称用逗号分隔
      */
     protected String filter;
 
     /**
      * The Listener when the provider side exposes a service or the customer side references a remote service used
      * if there are more than one, you can use commas to separate them
+     * 服务提供方导出服务监听器名称，多个名称用逗号分隔
      */
     protected String listener;
 
     /**
-     * The owner of the service providers
+     * 服务负责人，用于服务治理，请填写负责人公司邮箱前缀
      */
     protected String owner;
 
@@ -100,7 +103,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     protected Integer connections;
 
     /**
-     * The layer of service providers
+     * 服务提供者所在的分层。如：biz、dao、intl:web、china:acton。
      */
     protected String layer;
 
@@ -200,7 +203,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
         // interface cannot be null
         Assert.notNull(interfaceClass, new IllegalStateException("interface not allow null!"));
 
-        // to verify interfaceClass is an interface
+        // 验证interfaceClass是不是一个接口
         if (!interfaceClass.isInterface()) {
             throw new IllegalStateException("The interface class " + interfaceClass + " is not a interface!");
         }

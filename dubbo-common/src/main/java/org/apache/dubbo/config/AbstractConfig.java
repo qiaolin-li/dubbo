@@ -51,6 +51,8 @@ import static org.apache.dubbo.common.utils.ReflectUtils.findMethodByMethodSigna
 /**
  * Utility methods and public methods for parsing configuration
  *
+ * 提供了一些解析配置的公共方法
+ *
  * @export
  */
 public abstract class AbstractConfig implements Serializable {
@@ -98,6 +100,11 @@ public abstract class AbstractConfig implements Serializable {
         return value;
     }
 
+    /**
+     *  获取tag,应该就是个唯一标识啥的
+     * @param cls
+     * @return
+     */
     public static String getTagName(Class<?> cls) {
         String tag = cls.getSimpleName();
         for (String suffix : SUFFIXES) {
@@ -113,6 +120,12 @@ public abstract class AbstractConfig implements Serializable {
         appendParameters(parameters, config, null);
     }
 
+    /**
+     * 提取类中的参数数据，并放入 parameter这个map中
+     * @param parameters 整理的参数
+     * @param config 待获取参数数据的类
+     * @param prefix 前缀，类的参数key会拼接上这个前缀
+     */
     @SuppressWarnings("unchecked")
     public static void appendParameters(Map<String, String> parameters, Object config, String prefix) {
         if (config == null) {
@@ -123,28 +136,39 @@ public abstract class AbstractConfig implements Serializable {
             try {
                 String name = method.getName();
                 if (MethodUtils.isGetter(method)) {
+                    // 方法使用这个注解表示他是一个参数
                     Parameter parameter = method.getAnnotation(Parameter.class);
                     if (method.getReturnType() == Object.class || parameter != null && parameter.excluded()) {
                         continue;
                     }
+
+                    // 属性名，如果有parameter注解，则取注解的key属性，否则通过getter方法截取
                     String key;
                     if (parameter != null && parameter.key().length() > 0) {
                         key = parameter.key();
                     } else {
                         key = calculatePropertyFromGetter(name);
                     }
+
+                    // 获取属性值
                     Object value = method.invoke(config);
                     String str = String.valueOf(value).trim();
                     if (value != null && str.length() > 0) {
+
+                        // 转义或编码
                         if (parameter != null && parameter.escaped()) {
                             str = URL.encode(str);
                         }
+
+                        // 如果参数有重复时，可将结果以,为分隔符拼接起来
                         if (parameter != null && parameter.append()) {
                             String pre = parameters.get(key);
                             if (pre != null && pre.length() > 0) {
                                 str = pre + "," + str;
                             }
                         }
+
+                        // 将key拼接上前缀
                         if (prefix != null && prefix.length() > 0) {
                             key = prefix + "." + key;
                         }
@@ -153,6 +177,7 @@ public abstract class AbstractConfig implements Serializable {
                         throw new IllegalStateException(config.getClass().getSimpleName() + "." + key + " == null");
                     }
                 } else if (isParametersGetter(method)) {
+                    // 如果有一个方法是 getParameters，将它里面所有的k,v加工后put到parameters中
                     Map<String, String> map = (Map<String, String>) method.invoke(config, new Object[0]);
                     parameters.putAll(convert(map, prefix));
                 }
@@ -202,7 +227,8 @@ public abstract class AbstractConfig implements Serializable {
     }
 
     public static ConsumerModel.AsyncMethodInfo convertMethodConfig2AsyncInfo(MethodConfig methodConfig) {
-        if (methodConfig == null || (methodConfig.getOninvoke() == null && methodConfig.getOnreturn() == null && methodConfig.getOnthrow() == null)) {
+        if (methodConfig == null ||
+                (methodConfig.getOninvoke() == null && methodConfig.getOnreturn() == null && methodConfig.getOnthrow() == null)) {
             return null;
         }
 
@@ -320,6 +346,14 @@ public abstract class AbstractConfig implements Serializable {
                 && method.getReturnType() == void.class);
     }
 
+
+    /**
+     *  将参数拼接上去前缀，如果parameters中key带有-,最后将-转成.，并且重复put一份，为了兼容更多的配置
+     *  例如 registry-type" 会额外产生一份 "registry.type"
+     * @param parameters
+     * @param prefix
+     * @return
+     */
     private static Map<String, String> convert(Map<String, String> parameters, String prefix) {
         if (parameters == null || parameters.isEmpty()) {
             return Collections.emptyMap();

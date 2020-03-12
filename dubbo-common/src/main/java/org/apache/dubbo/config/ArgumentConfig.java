@@ -22,7 +22,7 @@ import org.apache.dubbo.config.support.Parameter;
 import java.io.Serializable;
 
 /**
- * The method arguments configuration
+ * 方法参数配置类
  *
  * @export
  */
@@ -32,16 +32,18 @@ public class ArgumentConfig implements Serializable {
 
     /**
      * The argument index: index -1 represents not set
+     * 参数索引，值为-1代表没有设置
      */
     private Integer index = -1;
 
     /**
-     * Argument type
+     * 通过参数类型查找参数的index
+     * 与index二选一
      */
     private String type;
 
     /**
-     * Whether the argument is the callback interface
+     * 参数是否为callback接口，如果为callback，服务提供方将生成反向代理，可以从服务提供方反向调用消费方，通常用于事件推送
      */
     private Boolean callback;
 

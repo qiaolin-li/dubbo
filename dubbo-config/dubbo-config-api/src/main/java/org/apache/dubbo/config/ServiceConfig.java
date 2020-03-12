@@ -112,6 +112,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
     /**
      * A delayed exposure service timer
      */
+    @SuppressWarnings("AlibabaThreadPoolCreation")
     private static final ScheduledExecutorService DELAY_EXPORT_EXECUTOR = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("DubboServiceDelayExporter", true));
 
     private static final Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
@@ -146,16 +147,19 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         super(service);
     }
 
+    @Override
     @Parameter(excluded = true)
     public boolean isExported() {
         return exported;
     }
 
+    @Override
     @Parameter(excluded = true)
     public boolean isUnexported() {
         return unexported;
     }
 
+    @Override
     public void unexport() {
         if (!exported) {
             return;
@@ -179,6 +183,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         dispatch(new ServiceConfigUnexportedEvent(this));
     }
 
+    @Override
     public synchronized void export() {
         if (!shouldExport()) {
             return;
@@ -221,12 +226,14 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             throw new IllegalStateException("<dubbo:service interface=\"\" /> interface not allow null!");
         }
 
+        // 如果要暴露的服务是GnericService的子类
         if (ref instanceof GenericService) {
             interfaceClass = GenericService.class;
             if (StringUtils.isEmpty(generic)) {
                 generic = Boolean.TRUE.toString();
             }
         } else {
+
             try {
                 interfaceClass = Class.forName(interfaceName, true, Thread.currentThread()
                         .getContextClassLoader());

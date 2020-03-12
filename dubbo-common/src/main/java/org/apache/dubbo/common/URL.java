@@ -84,6 +84,7 @@ import static org.apache.dubbo.common.constants.CommonConstants.VERSION_KEY;
  * for this case, url protocol = null, url host = home, url path = user1/router.js
  * </ul>
  *
+ *  统一资源定位符 (不可变，线程安全)
  * @see java.net.URL
  * @see java.net.URI
  */
@@ -92,6 +93,9 @@ class URL implements Serializable {
 
     private static final long serialVersionUID = -1985165475234910535L;
 
+    /**
+     *  协议名
+     */
     private final String protocol;
 
     private final String username;

@@ -44,27 +44,27 @@ public abstract class ServiceConfigBase<T> extends AbstractServiceConfig {
     private static final long serialVersionUID = 3033787999037024738L;
 
     /**
-     * The interface name of the exported service
+     * 服务接口名
      */
     protected String interfaceName;
 
     /**
-     * The interface class of the exported service
+     * 服务接口Class
      */
     protected Class<?> interfaceClass;
 
     /**
-     * The reference of the interface implementation
+     * 服务对象实现引用
      */
     protected T ref;
 
     /**
-     * The service name
+     * 服务路径 (注意：1.0不支持自定义路径，总是使用接口名，如果有1.0调2.0，配置服务路径可能不兼容)
      */
     protected String path;
 
     /**
-     * The provider configuration
+     * 指定provider，值为<dubbo:provider>的id属性
      */
     protected ProviderConfig provider;
 
@@ -173,6 +173,10 @@ public abstract class ServiceConfigBase<T> extends AbstractServiceConfig {
         return (delay == null && provider != null) ? provider.getDelay() : delay;
     }
 
+    /**
+     * 检查 ref对象是否正确
+     * ref对象不能为空并且必须是interfaceClass的实现
+     */
     public void checkRef() {
         // reference should not be null, and is the implementation of the given interface
         if (ref == null) {
@@ -197,6 +201,9 @@ public abstract class ServiceConfigBase<T> extends AbstractServiceConfig {
         return ref.getClass();
     }
 
+    /**
+     *  如果自己的一些配置为空，则取provider、
+     */
     public void completeCompoundConfigs() {
         if (provider != null) {
             if (application == null) {

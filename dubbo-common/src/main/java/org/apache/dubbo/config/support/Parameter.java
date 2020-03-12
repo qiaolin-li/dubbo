@@ -24,22 +24,44 @@ import java.lang.annotation.Target;
 
 /**
  * Parameter
+ * TODO 标致类的参数需要被获取？？？？ 2020年3月12日
+ * @author
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
 public @interface Parameter {
 
+    /**
+     *  属性的键（别名）
+     */
     String key() default "";
 
+    /**
+     *  获取属性的方法返回值不能为空，或者长度为0
+     */
     boolean required() default false;
 
+    /**
+     * TODO 是否忽略?? 不注这个注解不完事了？忽略啥？？？
+     */
     boolean excluded() default false;
 
+    /**
+     *  是否转义，将数据编码
+     */
     boolean escaped() default false;
 
+    /**
+     *  TODO 是否为属性？ 目前用于事件通知？？http://dubbo.apache.org/zh-cn/docs/user/demos/events-notify.html
+     *  反正我是没看出来
+     */
     boolean attribute() default false;
 
+    /**
+     *  当存在相当key的参数时，是否要将他们拼接起来，
+     *  例如 server.filter=aFilter ， server.filter=bFilter,如果这个参数为true,那么最终的参数为 server.filter=aFilter, bFilter
+     */
     boolean append() default false;
 
     /**
@@ -56,6 +78,9 @@ public @interface Parameter {
      * }
      *
      * </pre>
+     *
+     * 这个值为true,则表示希望使用没有key所指定的属性时尝试以自己的属性值名获取属性，例如上面这个代码 key为 alias_for_item，
+     * 如果没有这个属性，那么他会尝试 item获取属性
      */
     boolean useKeyAsProperty() default true;
 
