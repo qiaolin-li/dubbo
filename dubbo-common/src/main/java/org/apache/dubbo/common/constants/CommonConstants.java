@@ -45,6 +45,7 @@ public interface CommonConstants {
 
     String DOT_SEPARATOR = ".";
 
+    /** 以逗号分隔数据 */
     Pattern COMMA_SPLIT_PATTERN = Pattern.compile("\\s*[,]+\\s*");
 
     String PATH_SEPARATOR = "/";

@@ -30,7 +30,8 @@ import static org.springframework.beans.BeanUtils.getPropertyDescriptor;
 /**
  * {@link DubboConfigBeanCustomizer} for the default value for the "name" property that will be taken bean name
  * if absent.
- *
+ * 如果配置类中 name属性为空，则设置为beanName
+ * @author Administrator
  * @since 2.6.6
  */
 public class NamePropertyDefaultValueDubboConfigBeanCustomizer implements DubboConfigBeanCustomizer {
@@ -56,19 +57,23 @@ public class NamePropertyDefaultValueDubboConfigBeanCustomizer implements DubboC
 
             Method getNameMethod = propertyDescriptor.getReadMethod();
 
-            if (getNameMethod == null) { // if "getName" method is absent
+            // if "getName" method is absent
+            if (getNameMethod == null) {
                 return;
             }
 
             Object propertyValue = ReflectionUtils.invokeMethod(getNameMethod, dubboConfigBean);
 
-            if (propertyValue != null) { // If The return value of "getName" method is not null
+            // If The return value of "getName" method is not null
+            if (propertyValue != null) {
                 return;
             }
 
             Method setNameMethod = propertyDescriptor.getWriteMethod();
-            if (setNameMethod != null) { // "setName" and "getName" methods are present
-                if (Arrays.equals(of(String.class), setNameMethod.getParameterTypes())) { // the param type is String
+            // "setName" and "getName" methods are present
+            if (setNameMethod != null) {
+                // the param type is String
+                if (Arrays.equals(of(String.class), setNameMethod.getParameterTypes())) {
                     // set bean name to the value of the "name" property
                     ReflectionUtils.invokeMethod(setNameMethod, dubboConfigBean, beanName);
                 }

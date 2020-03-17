@@ -76,8 +76,10 @@ public abstract class AnnotatedInterfaceConfigBeanBuilder<C extends AbstractInte
 
         checkDependencies();
 
+        // 产生对象
         C configBean = doBuild();
 
+        // 配置这个对象
         configureBean(configBean);
 
         if (logger.isInfoEnabled()) {

@@ -53,12 +53,12 @@ public abstract class ReferenceConfigBase<T> extends AbstractReferenceConfig {
     protected Class<?> interfaceClass;
 
     /**
-     * client type
+     *  客户端传输类型设置，如Dubbo协议的netty或mina。
      */
     protected String client;
 
     /**
-     * The url for peer-to-peer invocation
+     * 点对点直连服务提供者地址，将绕过注册中心
      */
     protected String url;
 
@@ -68,7 +68,7 @@ public abstract class ReferenceConfigBase<T> extends AbstractReferenceConfig {
     protected ConsumerConfig consumer;
 
     /**
-     * Only the service provider of the specified protocol is invoked, and other protocols are ignored.
+     * 只调用指定协议的服务提供方，其它协议忽略。
      */
     protected String protocol;
 
@@ -111,6 +111,9 @@ public abstract class ReferenceConfigBase<T> extends AbstractReferenceConfig {
         return shouldInit;
     }
 
+    /**
+     *  保证消费者配置不为空
+     */
     public void checkDefault() {
         if (consumer != null) {
             return;
@@ -122,6 +125,9 @@ public abstract class ReferenceConfigBase<T> extends AbstractReferenceConfig {
         }));
     }
 
+    /**
+     *  以彼之长补己之短
+     */
     public void completeCompoundConfigs() {
         if (consumer != null) {
             if (application == null) {
@@ -261,17 +267,29 @@ public abstract class ReferenceConfigBase<T> extends AbstractReferenceConfig {
         return DUBBO + ".reference." + interfaceName;
     }
 
+    /**
+     * 解析直连提供者
+     * http://dubbo.apache.org/zh-cn/docs/user/demos/explicit-target.html
+     */
     public void resolveFile() {
+        // 先从系统配置（JVM启动参数）获取   -Dcom.xx.xxService=dubbo://localhost:20280
         String resolve = System.getProperty(interfaceName);
         String resolveFile = null;
         if (StringUtils.isEmpty(resolve)) {
+
+            // JVM参数没有的话，看有没有指定直连提供者配置文件  -Ddubbo.resolve.file=/xxx/xx/xxx.properties
             resolveFile = System.getProperty("dubbo.resolve.file");
             if (StringUtils.isEmpty(resolveFile)) {
+
+                // 如果没有指定配置文件的位置，那我们尝试在默认文件地址加载 位置 ${user.home}.dubbo-resolve.properties
                 File userResolveFile = new File(new File(System.getProperty("user.home")), "dubbo-resolve.properties");
                 if (userResolveFile.exists()) {
                     resolveFile = userResolveFile.getAbsolutePath();
                 }
             }
+
+            // 如果直连提供者配置文件不为空，则加载出来
+            // TODO 每次都加载一下，是否太浪费了呢？
             if (resolveFile != null && resolveFile.length() > 0) {
                 Properties properties = new Properties();
                 try (FileInputStream fis = new FileInputStream(new File(resolveFile))) {
@@ -283,8 +301,12 @@ public abstract class ReferenceConfigBase<T> extends AbstractReferenceConfig {
                 resolve = properties.getProperty(interfaceName);
             }
         }
+
+        // 如果直连提供者不为空，赋值给url
         if (resolve != null && resolve.length() > 0) {
             url = resolve;
+
+            // 如果有必要的话，打印出配置从哪里加载的
             if (logger.isWarnEnabled()) {
                 if (resolveFile != null) {
                     logger.warn("Using default dubbo resolve file " + resolveFile + " replace " + interfaceName + "" + resolve + " to p2p invoke remote service.");

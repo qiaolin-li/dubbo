@@ -510,6 +510,10 @@ public class RegistryConfig extends AbstractConfig {
         }
     }
 
+    /**
+     *  注解配置是否有效，即address不为空
+     * @return
+     */
     @Override
     @Parameter(excluded = true)
     public boolean isValid() {

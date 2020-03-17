@@ -22,7 +22,7 @@ import org.springframework.context.EnvironmentAware;
 
 /**
  * {@link AbstractConfig DubboConfig} Binder
- *
+ * 这个也没用到，使用的是 {@link com.alibaba.spring.context.config.ConfigurationBeanBinder#bind}
  * @see AbstractConfig
  * @see EnvironmentAware
  * @since 2.5.11

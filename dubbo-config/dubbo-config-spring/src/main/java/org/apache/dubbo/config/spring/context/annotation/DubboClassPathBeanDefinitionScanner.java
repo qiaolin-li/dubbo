@@ -30,6 +30,7 @@ import static org.springframework.context.annotation.AnnotationConfigUtils.regis
 /**
  * Dubbo {@link ClassPathBeanDefinitionScanner} that exposes some methods to be public.
  *
+ * Dubbo classPath bean扫描器，可扫描指定包下，指定类型
  * @see #doScan(String...)
  * @see #registerDefaultFilters()
  * @since 2.5.7

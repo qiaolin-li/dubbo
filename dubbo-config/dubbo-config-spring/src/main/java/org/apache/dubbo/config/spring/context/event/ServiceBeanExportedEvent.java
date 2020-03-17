@@ -23,7 +23,7 @@ import org.springframework.context.ApplicationListener;
 
 /**
  * A {@link ApplicationEvent} after {@link ServiceBean} {@link ServiceBean#export() export} invocation
- *
+ * ServiceBean导出完成事件
  * @see ApplicationEvent
  * @see ApplicationListener
  * @see ServiceBean

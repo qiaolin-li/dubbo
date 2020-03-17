@@ -28,6 +28,8 @@ import org.springframework.core.Ordered;
  * The {@link ApplicationListener} for {@link DubboBootstrap}'s lifecycle when the {@link ContextRefreshedEvent}
  * and {@link ContextClosedEvent} raised
  *
+ * 监听spring ioc的容器事件
+ * ioc刷新完成时启动dubbo的引导程序，ioc关闭时，关闭dubbo服务
  * @since 2.7.5
  */
 public class DubboBootstrapApplicationListener extends OneTimeExecutionApplicationContextEventListener

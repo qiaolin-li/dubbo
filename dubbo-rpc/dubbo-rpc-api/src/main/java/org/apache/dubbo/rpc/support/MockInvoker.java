@@ -63,6 +63,9 @@ final public class MockInvoker<T> implements Invoker<T> {
         return parseMockValue(mock, null);
     }
 
+    /**
+     * 将value解析成对应类型的数据
+     */
     public static Object parseMockValue(String mock, Type[] returnTypes) throws Exception {
         Object value = null;
         if ("empty".equals(mock)) {
@@ -175,6 +178,9 @@ final public class MockInvoker<T> implements Invoker<T> {
         return invoker;
     }
 
+    /**
+     * 通过反射产生一个mock对象
+     */
     @SuppressWarnings("unchecked")
     public static Object getMockObject(String mockService, Class serviceType) {
         if (ConfigUtils.isDefault(mockService)) {
@@ -198,7 +204,7 @@ final public class MockInvoker<T> implements Invoker<T> {
 
 
     /**
-     * Normalize mock string:
+     * 标准化mock字符串
      *
      * <ol>
      * <li>return => return null</li>

@@ -37,17 +37,17 @@ public abstract class AbstractReferenceConfig extends AbstractInterfaceConfig {
     // ======== Reference config default values, will take effect if reference's attribute is not set  ========
 
     /**
-     * Check if service provider exists, if not exists, it will be fast fail
+     * 启动时检查提供者是否存在，true报错，false忽略
      */
     protected Boolean check;
 
     /**
-     * Whether to eagle-init
+     * 是否在afterPropertiesSet()时饥饿初始化引用，否则等到有人注入或引用该实例时再初始化。
      */
     protected Boolean init;
 
     /**
-     * Whether to use generic interface
+     * 是否缺省泛化接口，如果为泛化接口，将返回GenericService
      */
     protected String generic;
 
@@ -72,12 +72,12 @@ public abstract class AbstractReferenceConfig extends AbstractInterfaceConfig {
     protected Boolean stubevent;//= Constants.DEFAULT_STUB_EVENT;
 
     /**
-     * The remote service version the customer side will reference
+     * 服务版本，与服务提供者的版本一致
      */
     protected String version;
 
     /**
-     * The remote service group the customer side will reference
+     * 服务分组，当一个接口有多个实现，可以用分组区分，必需和服务提供方一致
      */
     protected String group;
 

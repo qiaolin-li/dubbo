@@ -22,7 +22,6 @@ import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.utils.CollectionUtils;
 import org.apache.dubbo.config.ReferenceConfigBase;
 import org.apache.dubbo.config.ServiceConfigBase;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -31,17 +30,21 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+/**
+ * TODO 服务仓库类???
+ * @author Administrator
+ */
 public class ServiceRepository extends LifecycleAdapter implements FrameworkExt {
 
     public static final String NAME = "repository";
 
-    // services
+    /** services */
     private ConcurrentMap<String, ServiceDescriptor> services = new ConcurrentHashMap<>();
 
-    // consumers
+    /** consumers */
     private ConcurrentMap<String, ConsumerModel> consumers = new ConcurrentHashMap<>();
 
-    // providers
+     /**  providers */
     private ConcurrentMap<String, ProviderModel> providers = new ConcurrentHashMap<>();
 
     public ServiceRepository() {

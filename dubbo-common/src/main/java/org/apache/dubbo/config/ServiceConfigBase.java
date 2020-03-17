@@ -74,7 +74,7 @@ public abstract class ServiceConfigBase<T> extends AbstractServiceConfig {
     protected String providerIds;
 
     /**
-     * whether it is a GenericService
+     * 当前要暴露的服务对象是否是一个 GenericService的子类
      */
     protected volatile String generic;
 
@@ -178,10 +178,11 @@ public abstract class ServiceConfigBase<T> extends AbstractServiceConfig {
      * ref对象不能为空并且必须是interfaceClass的实现
      */
     public void checkRef() {
-        // reference should not be null, and is the implementation of the given interface
         if (ref == null) {
             throw new IllegalStateException("ref not allow null!");
         }
+
+        // ref 必须是 interfaceClass的实例
         if (!interfaceClass.isInstance(ref)) {
             throw new IllegalStateException("The class "
                     + ref.getClass().getName() + " unimplemented interface "
@@ -202,7 +203,8 @@ public abstract class ServiceConfigBase<T> extends AbstractServiceConfig {
     }
 
     /**
-     *  如果自己的一些配置为空，则取provider、
+     * 组合配置
+     *  如果自己的一些配置为空，则取provider、module、application中相同属性填充
      */
     public void completeCompoundConfigs() {
         if (provider != null) {
@@ -253,10 +255,15 @@ public abstract class ServiceConfigBase<T> extends AbstractServiceConfig {
         createProviderIfAbsent();
     }
 
+    /**
+     * provider 如果不存在则创建
+     */
     private void createProviderIfAbsent() {
         if (provider != null) {
             return;
         }
+
+        // 如果默认的provider为空，那么则自己new一个出来
         setProvider(
                 ApplicationModel.getConfigManager()
                         .getDefaultProvider()
@@ -276,9 +283,15 @@ public abstract class ServiceConfigBase<T> extends AbstractServiceConfig {
     }
 
     private void convertProtocolIdsToProtocols() {
+        // 如果protocolIds为空，将provider中的protocolIds设置给他,但provider不一定存在，protocolIds仍然可能为空
         computeValidProtocolIds();
+
         if (StringUtils.isEmpty(protocolIds)) {
+
+            // 如果 protocolIds和protocols（协议配置对象）都为空，则取初始化协议配置对象
             if (CollectionUtils.isEmpty(protocols)) {
+
+                // 获取默认的协议配置对象集合
                 List<ProtocolConfig> protocolConfigs = ApplicationModel.getConfigManager().getDefaultProtocols();
                 if (protocolConfigs.isEmpty()) {
                     protocolConfigs = new ArrayList<>(1);
@@ -293,9 +306,16 @@ public abstract class ServiceConfigBase<T> extends AbstractServiceConfig {
         } else {
             String[] arr = COMMA_SPLIT_PATTERN.split(protocolIds);
             List<ProtocolConfig> tmpProtocols = CollectionUtils.isNotEmpty(protocols) ? protocols : new ArrayList<>();
-            Arrays.stream(arr).forEach(id -> {
-                if (tmpProtocols.stream().noneMatch(prot -> prot.getId().equals(id))) {
+
+            for (String id : arr) {
+                boolean noneMatch = tmpProtocols.stream().noneMatch(prot -> prot.getId().equals(id));
+                // 如果 protocols 中不存在这个协议Id
+                if (noneMatch) {
+
+                    // 去ConfigManger中获取
                     Optional<ProtocolConfig> globalProtocol = ApplicationModel.getConfigManager().getProtocol(id);
+
+                    // 存在则add到tmpProtocols中，否则创建一个，并且放到tmpProtocols中
                     if (globalProtocol.isPresent()) {
                         tmpProtocols.add(globalProtocol.get());
                     } else {
@@ -304,12 +324,16 @@ public abstract class ServiceConfigBase<T> extends AbstractServiceConfig {
                         protocolConfig.refresh();
                         tmpProtocols.add(protocolConfig);
                     }
+
                 }
-            });
+            }
+
+            // 如果协议配置对象个数大于了协议Id,抛出异常 TODO ？？？ 什么时候会出现这个情况？？
             if (tmpProtocols.size() > arr.length) {
                 throw new IllegalStateException("Too much protocols found, the protocols comply to this service are :" + protocolIds + " but got " + protocols
                         .size() + " registries!");
             }
+
             setProtocols(tmpProtocols);
         }
     }
@@ -451,6 +475,9 @@ public abstract class ServiceConfigBase<T> extends AbstractServiceConfig {
         return URL.buildKey(interfaceName, group, version);
     }
 
+    /**
+     *  如果protocolIds 为空，那么取provider的 protocolIds
+     */
     private void computeValidProtocolIds() {
         if (StringUtils.isEmpty(getProtocolIds())) {
             if (getProvider() != null && StringUtils.isNotEmpty(getProvider().getProtocolIds())) {
@@ -469,6 +496,9 @@ public abstract class ServiceConfigBase<T> extends AbstractServiceConfig {
         }
     }
 
+    /**
+     *  暴露服务
+     */
     public abstract void export();
 
     public abstract void unexport();

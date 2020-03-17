@@ -31,7 +31,7 @@ import org.springframework.core.Ordered;
  * <p>
  * If There are multiple {@link DubboConfigBeanCustomizer} beans in the Spring {@link ApplicationContext context}, they
  * are executed orderly, thus the subclass should be aware to implement the {@link #getOrder()} method.
- *
+ * Dubbo配置bean定制器
  * @see DubboConfigBinder#bind(String, AbstractConfig)
  * @see DubboConfigBindingBeanPostProcessor
  * @since 2.6.6

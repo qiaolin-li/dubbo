@@ -85,16 +85,27 @@ public class UrlUtils {
                 url += URL_PARAM_STARTING_SYMBOL + RemotingConstants.BACKUP_KEY + "=" + backup.toString();
             }
         }
-        String defaultProtocol = defaults == null ? null : defaults.get(PROTOCOL_KEY);
-        if (defaultProtocol == null || defaultProtocol.length() == 0) {
-            defaultProtocol = DUBBO_PROTOCOL;
-        }
-        String defaultUsername = defaults == null ? null : defaults.get(USERNAME_KEY);
-        String defaultPassword = defaults == null ? null : defaults.get(PASSWORD_KEY);
-        int defaultPort = StringUtils.parseInteger(defaults == null ? null : defaults.get(PORT_KEY));
-        String defaultPath = defaults == null ? null : defaults.get(PATH_KEY);
-        Map<String, String> defaultParameters = defaults == null ? null : new HashMap<String, String>(defaults);
-        if (defaultParameters != null) {
+
+        // 协议
+        String defaultProtocol = null;
+        String defaultUsername = null;
+        String defaultPassword = null;
+        int defaultPort = 0;
+        String defaultPath = null;
+        Map<String, String> defaultParameters = null;
+
+        if(defaults != null){
+            defaultProtocol = defaults.get(PROTOCOL_KEY);
+            if (defaultProtocol == null || defaultProtocol.length() == 0) {
+                defaultProtocol = DUBBO_PROTOCOL;
+            }
+            defaultUsername = defaults.get(USERNAME_KEY);
+            defaultPassword = defaults.get(PASSWORD_KEY);
+            defaultPort = StringUtils.parseInteger(defaults.get(PORT_KEY));
+            defaultPath = defaults.get(PATH_KEY);
+            defaultParameters = new HashMap<>(defaults);
+
+            // 顺便删除上面这些已经取出来的key
             defaultParameters.remove(PROTOCOL_KEY);
             defaultParameters.remove(USERNAME_KEY);
             defaultParameters.remove(PASSWORD_KEY);
@@ -102,7 +113,9 @@ public class UrlUtils {
             defaultParameters.remove(PORT_KEY);
             defaultParameters.remove(PATH_KEY);
         }
+
         URL u = URL.valueOf(url);
+        // 标记参数是否有改变
         boolean changed = false;
         String protocol = u.getProtocol();
         String username = u.getUsername();
@@ -110,51 +123,51 @@ public class UrlUtils {
         String host = u.getHost();
         int port = u.getPort();
         String path = u.getPath();
-        Map<String, String> parameters = new HashMap<String, String>(u.getParameters());
-        if ((protocol == null || protocol.length() == 0) && defaultProtocol != null && defaultProtocol.length() > 0) {
-            changed = true;
+        Map<String, String> parameters = new HashMap<>(u.getParameters());
+
+        if (StringUtils.isEmpty(protocol) && StringUtils.isNotEmpty(defaultProtocol)) {
             protocol = defaultProtocol;
-        }
-        if ((username == null || username.length() == 0) && defaultUsername != null && defaultUsername.length() > 0) {
             changed = true;
+        }
+        if (StringUtils.isEmpty(username) && StringUtils.isNotEmpty(defaultUsername)) {
             username = defaultUsername;
-        }
-        if ((password == null || password.length() == 0) && defaultPassword != null && defaultPassword.length() > 0) {
             changed = true;
+        }
+
+        if (StringUtils.isEmpty(password) && StringUtils.isNotEmpty(defaultPassword)) {
             password = defaultPassword;
+            changed = true;
         }
         /*if (u.isAnyHost() || u.isLocalHost()) {
             changed = true;
             host = NetUtils.getLocalHost();
         }*/
+
+        // 端口不正确时，默认9090
         if (port <= 0) {
-            if (defaultPort > 0) {
-                changed = true;
-                port = defaultPort;
-            } else {
-                changed = true;
-                port = 9090;
-            }
+            port = defaultPort > 0 ? defaultPort : 9090;
+            changed = true;
         }
-        if (path == null || path.length() == 0) {
-            if (defaultPath != null && defaultPath.length() > 0) {
-                changed = true;
-                path = defaultPath;
-            }
+        if (StringUtils.isEmpty(path) && StringUtils.isNotEmpty(defaultPath)) {
+            path = defaultPath;
+            changed = true;
         }
-        if (defaultParameters != null && defaultParameters.size() > 0) {
+
+        if (CollectionUtils.isNotEmptyMap(defaultParameters)) {
+
+            // 取人之长，补己之短
             for (Map.Entry<String, String> entry : defaultParameters.entrySet()) {
                 String key = entry.getKey();
                 String defaultValue = entry.getValue();
-                if (defaultValue != null && defaultValue.length() > 0) {
-                    String value = parameters.get(key);
-                    if (StringUtils.isEmpty(value)) {
-                        changed = true;
-                        parameters.put(key, defaultValue);
-                    }
+
+                if (StringUtils.isEmpty(parameters.get(key)) && StringUtils.isNotEmpty(defaultValue)) {
+                    parameters.put(key, defaultValue);
+                    changed = true;
                 }
             }
         }
+
+        // 如果参数有改变，重新构建URL对象，因为URL对象是不可变的
         if (changed) {
             u = new URL(protocol, username, password, host, port, path, parameters);
         }
@@ -169,7 +182,8 @@ public class UrlUtils {
         if (addresses == null || addresses.length == 0) {
             return null; //here won't be empty
         }
-        List<URL> registries = new ArrayList<URL>();
+        List<URL> registries = new ArrayList<>();
+        // 将每个注册对象转转成URL
         for (String addr : addresses) {
             registries.add(parseURL(addr, defaults));
         }
@@ -495,6 +509,7 @@ public class UrlUtils {
 
     /**
      * The specified {@link URL} is service discovery registry type or not
+     * 服务是否为发现注册类型，发现就是可以拉取其他依赖的服务，注册只是注册自己，并不消费
      *
      * @param url the {@link URL} connects to the registry
      * @return If it is, return <code>true</code>, or <code>false</code>

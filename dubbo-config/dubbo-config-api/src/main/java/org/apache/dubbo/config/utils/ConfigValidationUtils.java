@@ -168,17 +168,21 @@ public class ConfigValidationUtils {
 
     public static List<URL> loadRegistries(AbstractInterfaceConfig interfaceConfig, boolean provider) {
         // check && override if necessary
-        List<URL> registryList = new ArrayList<URL>();
+        List<URL> registryList = new ArrayList<>();
         ApplicationConfig application = interfaceConfig.getApplication();
         List<RegistryConfig> registries = interfaceConfig.getRegistries();
         if (CollectionUtils.isNotEmpty(registries)) {
             for (RegistryConfig config : registries) {
+
+                // 如果注册配置为空，那么则为 0.0.0.0
                 String address = config.getAddress();
                 if (StringUtils.isEmpty(address)) {
                     address = ANYHOST_VALUE;
                 }
+
+                // 如果注册配置有效时，设置一些参数
                 if (!RegistryConfig.NO_AVAILABLE.equalsIgnoreCase(address)) {
-                    Map<String, String> map = new HashMap<String, String>();
+                    Map<String, String> map = new HashMap<>();
                     AbstractConfig.appendParameters(map, application);
                     AbstractConfig.appendParameters(map, config);
                     map.put(PATH_KEY, RegistryService.class.getName());
@@ -186,6 +190,8 @@ public class ConfigValidationUtils {
                     if (!map.containsKey(PROTOCOL_KEY)) {
                         map.put(PROTOCOL_KEY, DUBBO_PROTOCOL);
                     }
+
+                    // 将地址和参数拼接在一起转成URL
                     List<URL> urls = UrlUtils.parseURLs(address, map);
 
                     for (URL url : urls) {
@@ -194,6 +200,8 @@ public class ConfigValidationUtils {
                                 .addParameter(REGISTRY_KEY, url.getProtocol())
                                 .setProtocol(extractRegistryType(url))
                                 .build();
+
+                        // 是否要注册或者订阅服务？？TODO
                         if ((provider && url.getParameter(REGISTER_KEY, true))
                                 || (!provider && url.getParameter(SUBSCRIBE_KEY, true))) {
                             registryList.add(url);
@@ -252,25 +260,35 @@ public class ConfigValidationUtils {
      * Legitimacy check and setup of local simulated operations. The operations can be a string with Simple operation or
      * a classname whose {@link Class} implements a particular function
      *
+     * 检查mock是否正确
+     *
      * @param interfaceClass for provider side, it is the {@link Class} of the service that will be exported; for consumer
      *                       side, it is the {@link Class} of the remote service interface that will be referenced
      */
     public static void checkMock(Class<?> interfaceClass, AbstractInterfaceConfig config) {
+
+        // 如果不存在mock
         String mock = config.getMock();
         if (ConfigUtils.isEmpty(mock)) {
             return;
         }
 
+        // 标准化后的mock字符串
         String normalizedMock = MockInvoker.normalizeMock(mock);
+
+        // 如果是return 开头的
         if (normalizedMock.startsWith(RETURN_PREFIX)) {
             normalizedMock = normalizedMock.substring(RETURN_PREFIX.length()).trim();
             try {
-                //Check whether the mock value is legal, if it is illegal, throw exception
+                // Check whether the mock value is legal, if it is illegal, throw exception
+                // 检查mock的值是否合法
                 MockInvoker.parseMockValue(normalizedMock);
             } catch (Exception e) {
                 throw new IllegalStateException("Illegal mock return in <dubbo:service/reference ... " +
                         "mock=\"" + mock + "\" />");
             }
+
+            // 如果是 throw 开头的
         } else if (normalizedMock.startsWith(THROW_PREFIX)) {
             normalizedMock = normalizedMock.substring(THROW_PREFIX.length()).trim();
             if (ConfigUtils.isNotEmpty(normalizedMock)) {
@@ -283,7 +301,7 @@ public class ConfigValidationUtils {
                 }
             }
         } else {
-            //Check whether the mock class is a implementation of the interfaceClass, and if it has a default constructor
+            // 检查模拟类是否为interfaceClass的实现，以及它是否具有默认构造函数
             MockInvoker.getMockObject(normalizedMock, interfaceClass);
         }
     }
@@ -311,10 +329,13 @@ public class ConfigValidationUtils {
         checkName(TOKEN_KEY, config.getToken());
         checkPathName(PATH_KEY, config.getPath());
 
+        // TODO 这个是啥东西？？？
         checkMultiExtension(ExporterListener.class, "listener", config.getListener());
 
+        // TODO 貌似是检查一些属性的长度
         validateAbstractInterfaceConfig(config);
 
+        // 检查注册配置的一些属性有没有问题
         List<RegistryConfig> registries = config.getRegistries();
         if (registries != null) {
             for (RegistryConfig registry : registries) {
@@ -322,6 +343,7 @@ public class ConfigValidationUtils {
             }
         }
 
+        // 检查协议配置的属性有没有问题
         List<ProtocolConfig> protocols = config.getProtocols();
         if (protocols != null) {
             for (ProtocolConfig protocol : protocols) {
@@ -329,6 +351,7 @@ public class ConfigValidationUtils {
             }
         }
 
+        // 检查提供者配置的属性有没有问题
         ProviderConfig providerConfig = config.getProvider();
         if (providerConfig != null) {
             validateProviderConfig(providerConfig);
@@ -501,6 +524,11 @@ public class ConfigValidationUtils {
         }
     }
 
+    /**
+     *  service-discovery-registry 或者 registry
+     *  service-discovery-registry：服务注册发现，
+     *  registry：服务只注册，不拉取其他服务
+     */
     private static String extractRegistryType(URL url) {
         return isServiceDiscoveryRegistryType(url) ? SERVICE_REGISTRY_PROTOCOL : REGISTRY_PROTOCOL;
     }
@@ -516,7 +544,7 @@ public class ConfigValidationUtils {
     /**
      * Check whether there is a <code>Extension</code> who's name (property) is <code>value</code> (special treatment is
      * required)
-     *
+     * TODO 这是做什么的？？？？？？
      * @param type     The Extension type
      * @param property The extension key
      * @param value    The Extension name

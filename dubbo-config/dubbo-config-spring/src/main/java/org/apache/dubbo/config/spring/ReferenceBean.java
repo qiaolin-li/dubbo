@@ -81,6 +81,7 @@ public class ReferenceBean<T> extends ReferenceConfig<T> implements FactoryBean,
 
     /**
      * Initializes there Dubbo's Config Beans before @Reference bean autowiring
+     * 初始化这些配置bean
      */
     private void prepareDubboConfigBeans() {
         beansOfTypeIncludingAncestors(applicationContext, ApplicationConfig.class);
@@ -101,6 +102,7 @@ public class ReferenceBean<T> extends ReferenceConfig<T> implements FactoryBean,
     public void afterPropertiesSet() throws Exception {
 
         // Initializes Dubbo's Config Beans before @Reference bean autowiring
+        // 初始化Dubbo配置bean
         prepareDubboConfigBeans();
 
         // lazy init by default.

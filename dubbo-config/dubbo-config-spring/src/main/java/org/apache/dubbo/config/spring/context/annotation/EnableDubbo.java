@@ -33,6 +33,8 @@ import java.lang.annotation.Target;
  * <p>
  * Note : {@link EnableDubbo} must base on Spring Framework 4.2 and above
  *
+ * 启用Dubbo组件到spring beans
+ * @author Administrator
  * @see DubboComponentScan
  * @see EnableDubboConfig
  * @since 2.5.8
@@ -72,8 +74,8 @@ public @interface EnableDubbo {
 
     /**
      * It indicates whether {@link AbstractConfig} binding to multiple Spring Beans.
-     *
-     * @return the default value is <code>false</code>
+     * 是否是多配置
+     * @return the default value is <code>true</code>
      * @see EnableDubboConfig#multiple()
      */
     @AliasFor(annotation = EnableDubboConfig.class, attribute = "multiple")

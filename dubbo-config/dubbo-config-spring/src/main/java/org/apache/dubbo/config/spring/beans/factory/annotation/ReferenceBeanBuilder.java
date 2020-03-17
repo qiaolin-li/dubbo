@@ -57,7 +57,10 @@ class ReferenceBeanBuilder extends AnnotatedInterfaceConfigBeanBuilder<Reference
     }
 
     private void configureInterface(AnnotationAttributes attributes, ReferenceBean referenceBean) {
+
+        // 是否是通用类型
         Boolean generic = getAttribute(attributes, "generic");
+
         if (generic != null && generic) {
             // it's a generic reference
             String interfaceClassName = getAttribute(attributes, "interfaceName");
@@ -67,11 +70,13 @@ class ReferenceBeanBuilder extends AnnotatedInterfaceConfigBeanBuilder<Reference
             return;
         }
 
+        // 如果自身是接口，直接返回，否则取第一个接口，
         Class<?> serviceInterfaceClass = resolveServiceInterfaceClass(attributes, interfaceClass);
 
         Assert.isTrue(serviceInterfaceClass.isInterface(),
                 "The class of field or method that was annotated @Reference is not an interface!");
 
+        // 设置引用类型的接口
         referenceBean.setInterface(serviceInterfaceClass);
 
     }
@@ -97,12 +102,14 @@ class ReferenceBeanBuilder extends AnnotatedInterfaceConfigBeanBuilder<Reference
 
     @Override
     protected ReferenceBean doBuild() {
-        return new ReferenceBean<Object>();
-    }
+        return new ReferenceBean<>();
+}
 
     @Override
     protected void preConfigureBean(AnnotationAttributes attributes, ReferenceBean referenceBean) {
         Assert.notNull(interfaceClass, "The interface class must set first!");
+
+        // 数据绑定
         DataBinder dataBinder = new DataBinder(referenceBean);
         // Register CustomEditors for special fields
         dataBinder.registerCustomEditor(String.class, "filter", new StringTrimmerEditor(true));
@@ -154,14 +161,17 @@ class ReferenceBeanBuilder extends AnnotatedInterfaceConfigBeanBuilder<Reference
     @Override
     protected void postConfigureBean(AnnotationAttributes attributes, ReferenceBean bean) throws Exception {
 
+        // ioc
         bean.setApplicationContext(applicationContext);
 
+        // 设置接口Class
         configureInterface(attributes, bean);
 
         configureConsumerConfig(attributes, bean);
 
         configureMethodConfig(attributes, bean);
 
+        // 初始化 ReferenceBean
         bean.afterPropertiesSet();
 
     }

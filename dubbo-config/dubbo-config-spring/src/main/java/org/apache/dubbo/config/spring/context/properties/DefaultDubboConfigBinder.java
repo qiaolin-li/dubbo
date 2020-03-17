@@ -26,6 +26,7 @@ import java.util.Map;
 import static com.alibaba.spring.util.PropertySourcesUtils.getSubProperties;
 
 /**
+ *  * 这个也没用到，使用的是 {@link com.alibaba.spring.context.config.ConfigurationBeanBinder#bind}
  * Default {@link DubboConfigBinder} implementation based on Spring {@link DataBinder}
  */
 public class DefaultDubboConfigBinder extends AbstractDubboConfigBinder {

@@ -16,6 +16,7 @@
  */
 package org.apache.dubbo.config;
 
+import com.sun.xml.internal.bind.v2.TODO;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.URLBuilder;
 import org.apache.dubbo.common.Version;
@@ -23,11 +24,7 @@ import org.apache.dubbo.common.bytecode.Wrapper;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
-import org.apache.dubbo.common.utils.ClassUtils;
-import org.apache.dubbo.common.utils.CollectionUtils;
-import org.apache.dubbo.common.utils.ConfigUtils;
-import org.apache.dubbo.common.utils.NamedThreadFactory;
-import org.apache.dubbo.common.utils.StringUtils;
+import org.apache.dubbo.common.utils.*;
 import org.apache.dubbo.config.annotation.Service;
 import org.apache.dubbo.config.bootstrap.DubboBootstrap;
 import org.apache.dubbo.config.event.ServiceConfigExportedEvent;
@@ -65,6 +62,8 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.apache.dubbo.common.constants.CommonConstants.ANYHOST_KEY;
 import static org.apache.dubbo.common.constants.CommonConstants.ANY_VALUE;
@@ -100,6 +99,12 @@ import static org.apache.dubbo.rpc.Constants.SCOPE_REMOTE;
 import static org.apache.dubbo.rpc.Constants.TOKEN_KEY;
 import static org.apache.dubbo.rpc.cluster.Constants.EXPORT_KEY;
 
+/**
+ * 关于local、stub用法 详见：http://dubbo.apache.org/zh-cn/docs/user/demos/local-stub.html
+ *
+ * @author Administrator
+ */
+
 public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
     public static final Logger logger = LoggerFactory.getLogger(ServiceConfig.class);
@@ -130,6 +135,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
     /**
      * The flag whether a service has unexported ,if the method unexported is invoked, the value is true
+     * 标记服务是否取消导出，
      */
     private transient volatile boolean unexported;
 
@@ -183,8 +189,10 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         dispatch(new ServiceConfigUnexportedEvent(this));
     }
 
+
     @Override
     public synchronized void export() {
+        // 服务是否可以暴露出去
         if (!shouldExport()) {
             return;
         }
@@ -194,6 +202,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             bootstrap.init();
         }
 
+        // 检查并且更新子配置
         checkAndUpdateSubConfigs();
 
         //init serviceMetadata
@@ -204,6 +213,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         serviceMetadata.setServiceInterfaceName(getInterface());
         serviceMetadata.setTarget(getRef());
 
+        // 是否需要延迟暴露服务
         if (shouldDelay()) {
             DELAY_EXPORT_EXECUTOR.schedule(this::doExport, getDelay(), TimeUnit.MILLISECONDS);
         } else {
@@ -213,15 +223,23 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
     private void checkAndUpdateSubConfigs() {
         // Use default configs defined explicitly with global scope
+        // 准备好自己的一系列配置对象，如果没有的话在自己依赖的其他配置中获取
         completeCompoundConfigs();
+
+        // 保证 ProviderConfig 存在
         checkDefault();
+
+        // 保证 ProtocolConfig 存在
         checkProtocol();
-        // if protocol is not injvm checkRegistry
+
+        // 如果协议不只一个，或者不是 injvm类型的，那么需要检查注册配置 对象
         if (!isOnlyInJvm()) {
             checkRegistry();
         }
+
         this.refresh();
 
+        // 接口名称为空，说明没有填写interface
         if (StringUtils.isEmpty(interfaceName)) {
             throw new IllegalStateException("<dubbo:service interface=\"\" /> interface not allow null!");
         }
@@ -234,63 +252,114 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             }
         } else {
 
+            // 如果要暴露服务的类型不是 GenericService的实现，那么需要反射获取接口的class
             try {
                 interfaceClass = Class.forName(interfaceName, true, Thread.currentThread()
                         .getContextClassLoader());
             } catch (ClassNotFoundException e) {
                 throw new IllegalStateException(e.getMessage(), e);
             }
+
+            // 检查接口正确性，以及methods所指向的方法是不是来自于接口中
             checkInterfaceAndMethods(interfaceClass, getMethods());
+
+            // 检查ref对象正确性
             checkRef();
+
+            // 标记不是一个generic类型
             generic = Boolean.FALSE.toString();
         }
+
+        // 检查存根，目前使用Stub
+        // 关于local、stub用法 详见：http://dubbo.apache.org/zh-cn/docs/user/demos/local-stub.html
+        checkLocal();
+        checkStub();
+
+        // 检查存根以及他是否有个interfaceClass的构造器
+        checkStubAndLocal(interfaceClass);
+
+        // 检查mock的正确性
+        ConfigValidationUtils.checkMock(interfaceClass, this);
+
+        // 验证服务配置有没有问题
+        ConfigValidationUtils.validateServiceConfig(this);
+
+        // TODO 这个添加什么参数？？
+        appendParameters();
+    }
+
+    /**
+     *  关于local、stub用法 详见：http://dubbo.apache.org/zh-cn/docs/user/demos/local-stub.html
+     *  其实就是给自己的远程对象搞个静态代理，可以自定义一些操作，比如缓存
+     *  local其实现在已经不用了，用的是 stub, 见{@link this#checkStub()}
+     */
+    private void checkLocal(){
         if (local != null) {
             if ("true".equals(local)) {
                 local = interfaceName + "Local";
             }
             Class<?> localClass;
             try {
+                // 加载本地存根类（静态代理）
                 localClass = ClassUtils.forNameWithThreadContextClassLoader(local);
             } catch (ClassNotFoundException e) {
                 throw new IllegalStateException(e.getMessage(), e);
             }
+            // 存根类必须要来自 interfaceClass
             if (!interfaceClass.isAssignableFrom(localClass)) {
                 throw new IllegalStateException("The local implementation class " + localClass.getName() + " not implement interface " + interfaceName);
             }
         }
+
+    }
+
+    /**
+     *  关于local、stub用法 详见：http://dubbo.apache.org/zh-cn/docs/user/demos/local-stub.html
+     *  其实就是给自己的远程对象搞个静态代理，可以自定义一些操作，比如缓存
+     *  local其实现在已经不用了，用的是 stub, 见{@link this#checkStub()}
+     */
+    private void checkStub(){
+
         if (stub != null) {
+
+            // stub有可能用户名称以给定，没给定是默认interfaceName+Stub
             if ("true".equals(stub)) {
                 stub = interfaceName + "Stub";
             }
             Class<?> stubClass;
             try {
+                // 加载本地存根类（静态代理）
                 stubClass = ClassUtils.forNameWithThreadContextClassLoader(stub);
             } catch (ClassNotFoundException e) {
                 throw new IllegalStateException(e.getMessage(), e);
             }
+
+            // 存根类必须要来自 interfaceClass
             if (!interfaceClass.isAssignableFrom(stubClass)) {
                 throw new IllegalStateException("The stub implementation class " + stubClass.getName() + " not implement interface " + interfaceName);
             }
         }
-        checkStubAndLocal(interfaceClass);
-        ConfigValidationUtils.checkMock(interfaceClass, this);
-        ConfigValidationUtils.validateServiceConfig(this);
-        appendParameters();
     }
 
 
     protected synchronized void doExport() {
+        // 是否已经取消导出
         if (unexported) {
             throw new IllegalStateException("The service " + interfaceClass.getName() + " has already unexported!");
         }
+
+        // 已经导出过
         if (exported) {
             return;
         }
+
+        // 标记已经导出过
         exported = true;
 
         if (StringUtils.isEmpty(path)) {
             path = interfaceName;
         }
+
         doExportUrls();
 
         // dispatch a ServiceConfigExportedEvent since 2.7.4
@@ -299,6 +368,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrls() {
+        // 注册Provider到ServiceRepository
         ServiceRepository repository = ApplicationModel.getServiceRepository();
         ServiceDescriptor serviceDescriptor = repository.registerService(getInterfaceClass());
         repository.registerProvider(
@@ -309,15 +379,20 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 serviceMetadata
         );
 
+        // 加载注册的URL
         List<URL> registryURLs = ConfigValidationUtils.loadRegistries(this, true);
 
+        //
         for (ProtocolConfig protocolConfig : protocols) {
+            // 路径key
             String pathKey = URL.buildKey(getContextPath(protocolConfig)
                     .map(p -> p + "/" + path)
                     .orElse(path), group, version);
             // In case user specified path, register service one more time to map it to path.
             repository.registerService(pathKey, interfaceClass);
+
             // TODO, uncomment this line once service key is unified
+            // 设置ServiceMetadata的serviceKey
             serviceMetadata.setServiceKey(pathKey);
             doExportUrlsFor1Protocol(protocolConfig, registryURLs);
         }
@@ -329,7 +404,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             name = DUBBO;
         }
 
-        Map<String, String> map = new HashMap<String, String>();
+        Map<String, String> map = new HashMap<>();
         map.put(SIDE_KEY, PROVIDER_SIDE);
 
         ServiceConfig.appendRuntimeParameters(map);
@@ -346,54 +421,17 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 AbstractConfig.appendParameters(map, method, method.getName());
                 String retryKey = method.getName() + ".retry";
                 if (map.containsKey(retryKey)) {
+                    // TODO 先删除？为false次数为0，为true呢
+                    // 或许是因为retries默认为2次
                     String retryValue = map.remove(retryKey);
                     if ("false".equals(retryValue)) {
                         map.put(method.getName() + ".retries", "0");
                     }
                 }
-                List<ArgumentConfig> arguments = method.getArguments();
-                if (CollectionUtils.isNotEmpty(arguments)) {
-                    for (ArgumentConfig argument : arguments) {
-                        // convert argument type
-                        if (argument.getType() != null && argument.getType().length() > 0) {
-                            Method[] methods = interfaceClass.getMethods();
-                            // visit all methods
-                            if (methods != null && methods.length > 0) {
-                                for (int i = 0; i < methods.length; i++) {
-                                    String methodName = methods[i].getName();
-                                    // target the method, and get its signature
-                                    if (methodName.equals(method.getName())) {
-                                        Class<?>[] argtypes = methods[i].getParameterTypes();
-                                        // one callback in the method
-                                        if (argument.getIndex() != -1) {
-                                            if (argtypes[argument.getIndex()].getName().equals(argument.getType())) {
-                                                AbstractConfig.appendParameters(map, argument, method.getName() + "." + argument.getIndex());
-                                            } else {
-                                                throw new IllegalArgumentException("Argument config error : the index attribute and type attribute not match :index :" + argument.getIndex() + ", type:" + argument.getType());
-                                            }
-                                        } else {
-                                            // multiple callbacks in the method
-                                            for (int j = 0; j < argtypes.length; j++) {
-                                                Class<?> argclazz = argtypes[j];
-                                                if (argclazz.getName().equals(argument.getType())) {
-                                                    AbstractConfig.appendParameters(map, argument, method.getName() + "." + j);
-                                                    if (argument.getIndex() != -1 && argument.getIndex() != j) {
-                                                        throw new IllegalArgumentException("Argument config error : the index attribute and type attribute not match :index :" + argument.getIndex() + ", type:" + argument.getType());
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        } else if (argument.getIndex() != -1) {
-                            AbstractConfig.appendParameters(map, argument, method.getName() + "." + argument.getIndex());
-                        } else {
-                            throw new IllegalArgumentException("Argument config must set index or type attribute.eg: <dubbo:argument index='0' .../> or <dubbo:argument type=xxx .../>");
-                        }
 
-                    }
-                }
+                // 要暴露方法的参数配置对象
+                appendParametersForArgument(map, method.getArguments(), method);
+
             } // end of methods for
         }
 
@@ -411,7 +449,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 logger.warn("No method found in service interface " + interfaceClass.getName());
                 map.put(METHODS_KEY, ANY_VALUE);
             } else {
-                map.put(METHODS_KEY, StringUtils.join(new HashSet<String>(Arrays.asList(methods)), ","));
+                map.put(METHODS_KEY, StringUtils.join(new HashSet<>(Arrays.asList(methods)), ","));
             }
         }
         if (!ConfigUtils.isEmpty(token)) {
@@ -499,6 +537,62 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         }
         this.urls.add(url);
     }
+
+    /**
+     * 所有的ArgumentConfig必须在要暴露的接口的methodConfig对应的方法上找到
+     */
+    private void appendParametersForArgument(Map<String, String> map,  List<ArgumentConfig> arguments, MethodConfig methodConfig){
+        if (CollectionUtils.isNotEmpty(arguments)) {
+            return;
+        }
+
+        // 待暴露服务的接口中所有方法
+        Map<String, Method> methodMap = Arrays.stream(interfaceClass.getMethods()).collect(Collectors.toMap(Method::getName, Function.identity()));
+
+        for (ArgumentConfig argument : arguments) {
+            // convert argument type
+            if (argument.getType() != null && argument.getType().length() > 0) {
+
+                Method method = methodMap.get(methodConfig.getName());
+                if (method == null) {
+                    continue;
+                }
+
+                // 方法上所有参数
+                Class<?>[] argTypes = method.getParameterTypes();
+
+                // one callback in the methodConfig
+                // TODO 什么时候会等于-1
+                if (argument.getIndex() != -1) {
+                    if (argTypes[argument.getIndex()].getName().equals(argument.getType())) {
+                        AbstractConfig.appendParameters(map, argument, methodConfig.getName() + "." + argument.getIndex());
+                    } else {
+                        throw new IllegalArgumentException("Argument config error : the index attribute and type attribute not match :index :" + argument.getIndex() + ", type:" + argument.getType());
+                    }
+                } else {
+                    // multiple callbacks in the methodConfig
+                    // 多个回调？
+                    for (int j = 0; j < argTypes.length; j++) {
+                        Class<?> argclazz = argTypes[j];
+                        if (argclazz.getName().equals(argument.getType())) {
+                            AbstractConfig.appendParameters(map, argument, methodConfig.getName() + "." + j);
+                            if (argument.getIndex() != -1 && argument.getIndex() != j) {
+                                throw new IllegalArgumentException("Argument config error : the index attribute and type attribute not match :index :" + argument.getIndex() + ", type:" + argument.getType());
+                            }
+                        }
+                    }
+                }
+
+            } else if (argument.getIndex() != -1) {
+                AbstractConfig.appendParameters(map, argument, methodConfig.getName() + "." + argument.getIndex());
+            } else {
+                throw new IllegalArgumentException("Argument config must set index or type attribute.eg: <dubbo:argument index='0' .../> or <dubbo:argument type=xxx .../>");
+            }
+
+        }
+
+    }
+
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     /**

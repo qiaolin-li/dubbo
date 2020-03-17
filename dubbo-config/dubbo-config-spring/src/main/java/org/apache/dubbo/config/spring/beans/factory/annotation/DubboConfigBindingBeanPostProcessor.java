@@ -48,7 +48,7 @@ import static org.springframework.beans.factory.BeanFactoryUtils.beansOfTypeIncl
 
 /**
  * Dubbo Config Binding {@link BeanPostProcessor}
- *
+ * 这个也没用到，使用的是 {@link com.alibaba.spring.beans.factory.annotation.ConfigurationBeanBindingRegistrar}
  * @see EnableDubboConfigBinding
  * @see DubboConfigBindingRegistrar
  * @since 2.5.8

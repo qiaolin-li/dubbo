@@ -226,6 +226,12 @@ public abstract class AbstractConfig implements Serializable {
         }
     }
 
+    /**
+     *  解析事件通知
+     *  参见 http://dubbo.apache.org/zh-cn/docs/user/demos/events-notify.html
+     * @param methodConfig
+     * @return
+     */
     public static ConsumerModel.AsyncMethodInfo convertMethodConfig2AsyncInfo(MethodConfig methodConfig) {
         if (methodConfig == null ||
                 (methodConfig.getOninvoke() == null && methodConfig.getOnreturn() == null && methodConfig.getOnthrow() == null)) {
@@ -493,6 +499,7 @@ public abstract class AbstractConfig implements Serializable {
     public void refresh() {
         Environment env = ApplicationModel.getEnvironment();
         try {
+            // 获取组合配置
             CompositeConfiguration compositeConfiguration = env.getConfiguration(getPrefix(), getId());
             Configuration config = new ConfigConfigurationAdapter(this);
             if (env.isConfigCenterFirst()) {

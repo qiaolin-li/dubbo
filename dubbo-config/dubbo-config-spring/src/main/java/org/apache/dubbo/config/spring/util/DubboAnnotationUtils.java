@@ -92,12 +92,17 @@ public class DubboAnnotationUtils {
 
         ClassLoader classLoader = defaultInterfaceClass != null ? defaultInterfaceClass.getClassLoader() : Thread.currentThread().getContextClassLoader();
 
+        // 1、从@Service的interfaceClass属性中取
         Class<?> interfaceClass = getAttribute(attributes, "interfaceClass");
 
-        if (void.class.equals(interfaceClass)) { // default or set void.class for purpose.
+        // 如果是默认的 void.class
+        if (void.class.equals(interfaceClass)) {
 
+            // 置空，防止下面   if (interfaceClass == null && defaultInterfaceClass != null) 不满足
             interfaceClass = null;
 
+
+            // 2、从@Service的interfaceName属性中取，并且获取该字符串指向的Class
             String interfaceClassName = getAttribute(attributes, "interfaceName");
 
             if (hasText(interfaceClassName)) {
@@ -108,11 +113,16 @@ public class DubboAnnotationUtils {
 
         }
 
+
+        // 上面都没有找到
         if (interfaceClass == null && defaultInterfaceClass != null) {
+
+            // 找到 defaultInterfaceClass的所有接口
             // Find all interfaces from the annotated class
             // To resolve an issue : https://github.com/apache/dubbo/issues/3251
             Class<?>[] allInterfaces = getAllInterfacesForClass(defaultInterfaceClass);
 
+            // 如果存在，取第一个
             if (allInterfaces.length > 0) {
                 interfaceClass = allInterfaces[0];
             }
@@ -122,8 +132,7 @@ public class DubboAnnotationUtils {
         Assert.notNull(interfaceClass,
                 "@Service interfaceClass() or interfaceName() or interface class must be present!");
 
-        Assert.isTrue(interfaceClass.isInterface(),
-                "The annotated type must be an interface!");
+        Assert.isTrue(interfaceClass.isInterface(), "The annotated type must be an interface!");
 
         return interfaceClass;
     }

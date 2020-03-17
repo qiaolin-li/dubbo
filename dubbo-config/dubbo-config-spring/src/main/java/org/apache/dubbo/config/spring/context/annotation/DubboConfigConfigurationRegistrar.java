@@ -32,7 +32,7 @@ import static org.apache.dubbo.config.spring.context.config.NamePropertyDefaultV
 
 /**
  * Dubbo {@link AbstractConfig Config} {@link ImportBeanDefinitionRegistrar register}, which order can be configured
- *
+ * Dubbo配置Bean 注册器
  * @see EnableDubboConfig
  * @see DubboConfigConfiguration
  * @see Ordered
@@ -46,30 +46,36 @@ public class DubboConfigConfigurationRegistrar implements ImportBeanDefinitionRe
         AnnotationAttributes attributes = AnnotationAttributes.fromMap(
                 importingClassMetadata.getAnnotationAttributes(EnableDubboConfig.class.getName()));
 
+        // 单配置与多配置，参见：https://segmentfault.com/a/1190000012661402#articleHeader4
         boolean multiple = attributes.getBoolean("multiple");
 
-        // Single Config Bindings
+        // 单配置绑定
         registerBeans(registry, DubboConfigConfiguration.Single.class);
 
-        if (multiple) { // Since 2.6.6 https://github.com/apache/dubbo/issues/3193
+        // 多配置 Since 2.6.6 https://github.com/apache/dubbo/issues/3193
+        if (multiple) {
             registerBeans(registry, DubboConfigConfiguration.Multiple.class);
         }
 
-        // Register DubboConfigAliasPostProcessor
+        // 注册配置别名后置处理器
         registerDubboConfigAliasPostProcessor(registry);
 
-        // Register NamePropertyDefaultValueDubboConfigBeanCustomizer
+        // 注册name属性不存在时，使用beanName设置
         registerDubboConfigBeanCustomizers(registry);
 
     }
 
+    /**
+     * 配置Bean如果name属性没有值，那么将beanName设置为name
+     * @param registry
+     */
     private void registerDubboConfigBeanCustomizers(BeanDefinitionRegistry registry) {
         registerInfrastructureBean(registry, BEAN_NAME, NamePropertyDefaultValueDubboConfigBeanCustomizer.class);
     }
 
     /**
      * Register {@link DubboConfigAliasPostProcessor}
-     *
+     * 这个PostProcessor用于给配置类取个别名
      * @param registry {@link BeanDefinitionRegistry}
      * @since 2.7.4 [Feature] https://github.com/apache/dubbo/issues/5093
      */

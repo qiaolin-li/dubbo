@@ -99,6 +99,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
 
     /**
      * Connection limits, 0 means shared connection, otherwise it defines the connections delegated to the current service
+     * 对每个提供者的最大连接数，rmi、http、hessian等短连接协议表示限制连接数，dubbo等长连接协表示建立的长连接个数
      */
     protected Integer connections;
 
@@ -171,10 +172,14 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
 
     /**
      * Check whether the registry config is exists, and then conversion it to {@link RegistryConfig}
+     * 检查注册配置是否存在，并且将它转换成 {@link RegistryConfig}
      */
     public void checkRegistry() {
+
+        // 保证registryIds所对应的registry都在
         convertRegistryIdsToRegistries();
 
+        // 检查所有注册配置是否有效，即address不为空
         for (RegistryConfig registryConfig : registries) {
             if (!registryConfig.isValid()) {
                 throw new IllegalStateException("No registry config found or it's not a valid config! " +
@@ -200,19 +205,21 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
      * @param methods        the methods configured
      */
     public void checkInterfaceAndMethods(Class<?> interfaceClass, List<MethodConfig> methods) {
-        // interface cannot be null
+        // 接口class对象不能为空
         Assert.notNull(interfaceClass, new IllegalStateException("interface not allow null!"));
 
         // 验证interfaceClass是不是一个接口
         if (!interfaceClass.isInterface()) {
             throw new IllegalStateException("The interface class " + interfaceClass + " is not a interface!");
         }
-        // check if methods exist in the remote service interface
+        // 检查methods中所有的方法是不是否来自于要暴露的接口
         if (CollectionUtils.isNotEmpty(methods)) {
             for (MethodConfig methodBean : methods) {
                 methodBean.setService(interfaceClass.getName());
                 methodBean.setServiceId(this.getId());
                 methodBean.refresh();
+
+                // 要暴露的方法必须给出方法名
                 String methodName = methodBean.getName();
                 if (StringUtils.isEmpty(methodName)) {
                     throw new IllegalStateException("<dubbo:method> name attribute is required! Please check: " +
@@ -220,6 +227,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
                             "<dubbo:method name=\"\" ... /></<dubbo:reference>");
                 }
 
+                // 检查要暴露的方法是否存在于该class中，如果不存在则抛出错误
                 boolean hasMethod = Arrays.stream(interfaceClass.getMethods()).anyMatch(method -> method.getName().equals(methodName));
                 if (!hasMethod) {
                     throw new IllegalStateException("The interface " + interfaceClass.getName()
@@ -232,8 +240,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
 
 
     /**
-     * Legitimacy check of stub, note that: the local will deprecated, and replace with <code>stub</code>
-     *
+     * 检查Stub和Local, Local现在已经过时了，请使用Stub
      * @param interfaceClass for provider side, it is the {@link Class} of the service that will be exported; for consumer
      *                       side, it is the {@link Class} of the remote service interface
      */
@@ -250,7 +257,11 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
         }
     }
 
+    /**
+     * 验证存根类是否是接口的实现和存根类是否有一个构造器，参数是接口的类型
+     */
     private void verify(Class<?> interfaceClass, Class<?> localClass) {
+        // 存根类也必须是要暴露服务的实现
         if (!interfaceClass.isAssignableFrom(localClass)) {
             throw new IllegalStateException("The local implementation class " + localClass.getName() +
                     " not implement interface " + interfaceClass.getName());
@@ -258,6 +269,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
 
         try {
             //Check if the localClass a constructor with parameter who's type is interfaceClass
+            // 查找存根类中是否拥有一个interfaceClass参数的Constructor
             ReflectUtils.findConstructor(localClass, interfaceClass);
         } catch (NoSuchMethodException e) {
             throw new IllegalStateException("No such constructor \"public " + localClass.getSimpleName() +
@@ -267,7 +279,9 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
 
     private void convertRegistryIdsToRegistries() {
         computeValidRegistryIds();
+
         if (StringUtils.isEmpty(registryIds)) {
+            // 保证 registries 不为空
             if (CollectionUtils.isEmpty(registries)) {
                 List<RegistryConfig> registryConfigs = ApplicationModel.getConfigManager().getDefaultRegistries();
                 if (registryConfigs.isEmpty()) {
@@ -281,8 +295,13 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
         } else {
             String[] ids = COMMA_SPLIT_PATTERN.split(registryIds);
             List<RegistryConfig> tmpRegistries = CollectionUtils.isNotEmpty(registries) ? registries : new ArrayList<>();
-            Arrays.stream(ids).forEach(id -> {
-                if (tmpRegistries.stream().noneMatch(reg -> reg.getId().equals(id))) {
+
+            for (String id : ids) {
+                boolean noneMatch = tmpRegistries.stream().noneMatch(reg -> reg.getId().equals(id));
+                // 如果 registryId不在 registries里面
+                if (noneMatch) {
+
+                    // 尝试去ConfigManger中获取,ConfigManger中不存在，自己new一个
                     Optional<RegistryConfig> globalRegistry = ApplicationModel.getConfigManager().getRegistry(id);
                     if (globalRegistry.isPresent()) {
                         tmpRegistries.add(globalRegistry.get());
@@ -293,7 +312,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
                         tmpRegistries.add(registryConfig);
                     }
                 }
-            });
+            }
 
             if (tmpRegistries.size() > ids.length) {
                 throw new IllegalStateException("Too much registries found, the registries assigned to this service " +
@@ -305,14 +324,6 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
 
     }
 
-    protected void computeValidRegistryIds() {
-        if (StringUtils.isEmpty(getRegistryIds())) {
-            if (getApplication() != null && StringUtils.isNotEmpty(getApplication().getRegistryIds())) {
-                setRegistryIds(getApplication().getRegistryIds());
-            }
-        }
-    }
-
     /**
      * @return local
      * @deprecated Replace to <code>getStub()</code>
@@ -320,6 +331,17 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     @Deprecated
     public String getLocal() {
         return local;
+    }
+
+    /**
+     *  如果registryIds为空，尝试将applicationConfig的registryIds赋值给他
+     */
+    protected void computeValidRegistryIds() {
+        if (StringUtils.isEmpty(getRegistryIds())) {
+            if (getApplication() != null && StringUtils.isNotEmpty(getApplication().getRegistryIds())) {
+                setRegistryIds(getApplication().getRegistryIds());
+            }
+        }
     }
 
     /**

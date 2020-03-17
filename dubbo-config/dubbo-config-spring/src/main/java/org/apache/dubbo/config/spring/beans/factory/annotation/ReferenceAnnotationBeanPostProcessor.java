@@ -43,6 +43,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.RecursiveTask;
 
 import static com.alibaba.spring.util.AnnotationUtils.getAttribute;
 import static com.alibaba.spring.util.AnnotationUtils.getAttributes;
@@ -123,22 +124,23 @@ public class ReferenceAnnotationBeanPostProcessor extends AbstractAnnotationBean
     @Override
     protected Object doGetInjectedBean(AnnotationAttributes attributes, Object bean, String beanName, Class<?> injectedType,
                                        InjectionMetadata.InjectedElement injectedElement) throws Exception {
-        /**
-         * The name of bean that annotated Dubbo's {@link Service @Service} in local Spring {@link ApplicationContext}
-         */
+
+        // ServiceBean:interfaceName:version:group
         String referencedBeanName = buildReferencedBeanName(attributes, injectedType);
 
-        /**
-         * The name of bean that is declared by {@link Reference @Reference} annotation injection
-         */
+        // @Reference org.apache.dubbo.demo.DemoService
         String referenceBeanName = getReferenceBeanName(attributes, injectedType);
 
+        // 构建 ReferenceBean 对象
         ReferenceBean referenceBean = buildReferenceBeanIfAbsent(referenceBeanName, attributes, injectedType);
 
+        // 注册@Reference所执行的bean
         registerReferenceBean(referencedBeanName, referenceBean, attributes, injectedType);
 
+        // 缓存 ReferenceBean
         cacheInjectedReferenceBean(referenceBean, injectedElement);
 
+        // 获取@Reference对象
         return getOrCreateProxy(referencedBeanName, referenceBeanName, referenceBean, injectedType);
     }
 
@@ -159,18 +161,25 @@ public class ReferenceAnnotationBeanPostProcessor extends AbstractAnnotationBean
 
         String beanName = getReferenceBeanName(attributes, interfaceClass);
 
-        if (existsServiceBean(referencedBeanName)) { // If @Service bean is local one
+        // If @Service bean is local one
+        // TODO 如果这个bean本地存在，那么说明在一台机器上 ??
+        if (existsServiceBean(referencedBeanName)) {
             /**
              * Get  the @Service's BeanDefinition from {@link BeanFactory}
              * Refer to {@link ServiceAnnotationBeanPostProcessor#buildServiceBeanDefinition}
              */
+            // 如果是本地bean,那么获取已经注册的@Service实例
             AbstractBeanDefinition beanDefinition = (AbstractBeanDefinition) beanFactory.getBeanDefinition(referencedBeanName);
             RuntimeBeanReference runtimeBeanReference = (RuntimeBeanReference) beanDefinition.getPropertyValues().get("ref");
             // The name of bean annotated @Service
             String serviceBeanName = runtimeBeanReference.getBeanName();
+
             // register Alias rather than a new bean name, in order to reduce duplicated beans
+            // 注册别名而不是bean,减少重复bean
             beanFactory.registerAlias(serviceBeanName, beanName);
-        } else { // Remote @Service Bean
+        } else {
+            // Remote @Service Bean
+            // 远程Bean
             if (!beanFactory.containsBean(beanName)) {
                 beanFactory.registerSingleton(beanName, referenceBean);
             }
@@ -238,14 +247,18 @@ public class ReferenceAnnotationBeanPostProcessor extends AbstractAnnotationBean
      * @since 2.7.4
      */
     private Object getOrCreateProxy(String referencedBeanName, String referenceBeanName, ReferenceBean referenceBean, Class<?> serviceInterfaceType) {
-        if (existsServiceBean(referencedBeanName)) { // If the local @Service Bean exists, build a proxy of ReferenceBean
+        // If the local @Service Bean exists, build a proxy of ReferenceBean
+        // 如果存在存在本地的bean,构建一个代理对象，延迟初始化（等待本地bean发布完成）
+        if (existsServiceBean(referencedBeanName)) {
             return newProxyInstance(getClassLoader(), new Class[]{serviceInterfaceType},
                     wrapInvocationHandler(referenceBeanName, referenceBean));
-        } else { // ReferenceBean should be initialized and get immediately
+        } else {
+            // ReferenceBean should be initialized and get immediately
             /**
              * TODO, if we can make sure this happens after {@link DubboLifecycleComponentApplicationListener},
              * TODO, then we can avoid starting bootstrap in here, because bootstrap should has been started.
              */
+            // 如果是远程依赖，应该立即初始化，
             return referenceBean.get();
         }
     }
@@ -260,8 +273,11 @@ public class ReferenceAnnotationBeanPostProcessor extends AbstractAnnotationBean
      * @since 2.7.4
      */
     private InvocationHandler wrapInvocationHandler(String referenceBeanName, ReferenceBean referenceBean) {
+        // TODO 为了只创建一次Bean?  错，其实为了本地服务bean发布完成之后再初始化
+        // 见 ReferenceAnnotationBeanPostProcessor.onApplicationEvent
         return localReferenceBeanInvocationHandlerCache.computeIfAbsent(referenceBeanName, name ->
                 new ReferenceBeanInvocationHandler(referenceBean));
+
     }
 
     private static class ReferenceBeanInvocationHandler implements InvocationHandler {
@@ -278,7 +294,8 @@ public class ReferenceAnnotationBeanPostProcessor extends AbstractAnnotationBean
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             Object result;
             try {
-                if (bean == null) { // If the bean is not initialized, invoke init()
+                if (bean == null) {
+                    // If the bean is not initialized, invoke init()
                     // issue: https://github.com/apache/dubbo/issues/3429
                     init();
                 }
@@ -317,9 +334,12 @@ public class ReferenceAnnotationBeanPostProcessor extends AbstractAnnotationBean
                                                      Class<?> referencedType)
             throws Exception {
 
+        // 尝试从缓存中获取，因为可能有多个地方@Reference引用了某个接口
         ReferenceBean<?> referenceBean = referenceBeanCache.get(referenceBeanName);
 
         if (referenceBean == null) {
+
+            // 构建 referenceBean
             ReferenceBeanBuilder beanBuilder = ReferenceBeanBuilder
                     .create(attributes, applicationContext)
                     .interfaceClass(referencedType);
@@ -332,6 +352,9 @@ public class ReferenceAnnotationBeanPostProcessor extends AbstractAnnotationBean
         return referenceBean;
     }
 
+    /**
+     * 缓存referenceBean
+     */
     private void cacheInjectedReferenceBean(ReferenceBean referenceBean,
                                             InjectionMetadata.InjectedElement injectedElement) {
         if (injectedElement.getMember() instanceof Field) {
@@ -348,6 +371,7 @@ public class ReferenceAnnotationBeanPostProcessor extends AbstractAnnotationBean
 
     @Override
     public void onApplicationEvent(ApplicationEvent event) {
+        // @Reference如果是本地的话，那么等服务发不完，再初始化ReferenceBean
         if (event instanceof ServiceBeanExportedEvent) {
             onServiceBeanExportEvent((ServiceBeanExportedEvent) event);
         }
@@ -362,7 +386,7 @@ public class ReferenceAnnotationBeanPostProcessor extends AbstractAnnotationBean
         String serviceBeanName = serviceBean.getBeanName();
         // Remove ServiceBean when it's exported
         ReferenceBeanInvocationHandler handler = localReferenceBeanInvocationHandlerCache.remove(serviceBeanName);
-        // Initialize
+        // 初始化
         if (handler != null) {
             handler.init();
         }

@@ -35,7 +35,7 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Dubbo {@link AbstractConfig Config} {@link Configuration}
- *
+ * Dubbo配置，提供了多配置和单配置的配置定义
  * @revised 2.7.5
  * @see Configuration
  * @see EnableConfigurationBeanBindings
@@ -54,6 +54,7 @@ public class DubboConfigConfiguration {
 
     /**
      * Single Dubbo {@link AbstractConfig Config} Bean Binding
+     * 单例的Dubbo配置bean
      */
     @EnableConfigurationBeanBindings({
             @EnableConfigurationBeanBinding(prefix = "dubbo.application", type = ApplicationConfig.class),
@@ -74,6 +75,7 @@ public class DubboConfigConfiguration {
 
     /**
      * Multiple Dubbo {@link AbstractConfig Config} Bean Binding
+     * 多例的Dubbo配置bean
      */
     @EnableConfigurationBeanBindings({
             @EnableConfigurationBeanBinding(prefix = "dubbo.applications", type = ApplicationConfig.class, multiple = true),

@@ -62,14 +62,11 @@ public abstract class AbstractMethodConfig extends AbstractConfig {
     protected Boolean sent;
 
     /**
-     * The name of mock class which gets called when a service fails to execute
-     *
-     * note that: the mock doesn't support on the provider side，and the mock is executed when a non-business exception
-     * occurs after a remote service call
-     *
+     * 参见 http://dubbo.apache.org/zh-cn/docs/user/demos/local-mock.html
      * 设为true，表示使用缺省Mock类名，即：接口名 + Mock后缀，服务接口调用失败Mock实现类，
      * 该Mock类必须有一个无参构造函数，与Local的区别在于，Local总是被执行，而Mock只在出现非业务异常(比如超时，网络异常等)时执行，
      * Local在远程调用之前执行，Mock在远程调用后执行。
+     * 是个容错的操作
      */
     protected String mock;
 

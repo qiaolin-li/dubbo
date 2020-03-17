@@ -125,7 +125,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
     private transient volatile Invoker<?> invoker;
 
     /**
-     * The flag whether the ReferenceConfig has been initialized
+     * 是否已经初始化
      */
     private transient volatile boolean initialized;
 
@@ -185,7 +185,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
 
         checkAndUpdateSubConfigs();
 
-        //init serivceMetadata
+        //init serviceMetadata
         serviceMetadata.setVersion(version);
         serviceMetadata.setGroup(group);
         serviceMetadata.setDefaultGroup(group);
@@ -194,10 +194,13 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         // TODO, uncomment this line once service key is unified
         serviceMetadata.setServiceKey(URL.buildKey(interfaceName, group, version));
 
+        // 检查存根
         checkStubAndLocal(interfaceClass);
+
+        // 检查mock
         ConfigValidationUtils.checkMock(interfaceClass, this);
 
-        Map<String, String> map = new HashMap<String, String>();
+        Map<String, String> map = new HashMap<>();
         map.put(SIDE_KEY, CONSUMER_SIDE);
 
         ReferenceConfigBase.appendRuntimeParameters(map);
@@ -212,7 +215,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                 logger.warn("No method found in service interface " + interfaceClass.getName());
                 map.put(METHODS_KEY, ANY_VALUE);
             } else {
-                map.put(METHODS_KEY, StringUtils.join(new HashSet<String>(Arrays.asList(methods)), COMMA_SEPARATOR));
+                map.put(METHODS_KEY, StringUtils.join(new HashSet<>(Arrays.asList(methods)), COMMA_SEPARATOR));
             }
         }
         map.put(INTERFACE_KEY, interfaceName);
@@ -231,10 +234,14 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                 String retryKey = methodConfig.getName() + ".retry";
                 if (map.containsKey(retryKey)) {
                     String retryValue = map.remove(retryKey);
+
+                    // 如果方法不需要重试，那么将重试次数设置为0
                     if ("false".equals(retryValue)) {
                         map.put(methodConfig.getName() + ".retries", "0");
                     }
                 }
+
+                // 事件通知配置
                 ConsumerModel.AsyncMethodInfo asyncMethodInfo = AbstractConfig.convertMethodConfig2AsyncInfo(methodConfig);
                 if (asyncMethodInfo != null) {
 //                    consumerModel.getMethodModel(methodConfig.getName()).addAttribute(ASYNC_KEY, asyncMethodInfo);
@@ -243,8 +250,10 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             }
         }
 
+        // 从系统环境变量中获取自己的ip，用作注册
         String hostToRegistry = ConfigUtils.getSystemProperty(DUBBO_IP_TO_REGISTRY);
         if (StringUtils.isEmpty(hostToRegistry)) {
+            // 否则获取自己的ip
             hostToRegistry = NetUtils.getLocalHost();
         } else if (isInvalidLocalHost(hostToRegistry)) {
             throw new IllegalArgumentException("Specified invalid registry ip from property:" + DUBBO_IP_TO_REGISTRY + ", value:" + hostToRegistry);
@@ -253,6 +262,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
 
         serviceMetadata.getAttachments().putAll(map);
 
+        // TODO 注册什么西西？
         ServiceRepository repository = ApplicationModel.getServiceRepository();
         ServiceDescriptor serviceDescriptor = repository.registerService(interfaceClass);
         repository.registerConsumer(
@@ -263,6 +273,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                 null,
                 serviceMetadata);
 
+        // 如何代理
         ref = createProxy(map);
 
         serviceMetadata.setTarget(ref);
@@ -374,31 +385,51 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
     /**
      * This method should be called right after the creation of this class's instance, before any property in other config modules is used.
      * Check each config modules are created properly and override their properties if necessary.
+     * 在使用其他配置模块中的任何属性之前，应该在这个类的实例创建之后立即调用这个方法。
+     * 检查每个配置模块是否正确创建，并在必要时覆盖它们的属性。
      */
     public void checkAndUpdateSubConfigs() {
         if (StringUtils.isEmpty(interfaceName)) {
             throw new IllegalStateException("<dubbo:reference interface=\"\" /> interface not allow null!");
         }
+
+        // 自己没有的配置，设值成其他的配置类的配置
         completeCompoundConfigs();
+
         // get consumer's global configuration
         checkDefault();
+
+        // TODO 这个方法不知道干啥的
         this.refresh();
+
         if (getGeneric() == null && getConsumer() != null) {
             setGeneric(getConsumer().getGeneric());
         }
+
+        // 如果是 GenericService的子类
         if (ProtocolUtils.isGeneric(generic)) {
             interfaceClass = GenericService.class;
         } else {
+
+            // 如果是其他的类，那么需要反射获取接口Class
             try {
                 interfaceClass = Class.forName(interfaceName, true, Thread.currentThread()
                         .getContextClassLoader());
             } catch (ClassNotFoundException e) {
                 throw new IllegalStateException(e.getMessage(), e);
             }
+
+            // 检查接口正确性，和这些method是不是来自于这个接口
             checkInterfaceAndMethods(interfaceClass, getMethods());
         }
+
+        // 解析直连提供者
         resolveFile();
+
+        // TODO 蜜汁操作，后面再看看
         ConfigValidationUtils.validateReferenceConfig(this);
+
+        // TODO 不懂
         appendParameters();
     }
 
@@ -466,6 +497,9 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         }
     };
 
+    /**
+     *  TODO 没看懂，这是追加参数到哪里
+     */
     public void appendParameters() {
         URL appendParametersUrl = URL.valueOf("appendParameters://");
         List<AppendParametersComponent> appendParametersComponents = ExtensionLoader.getExtensionLoader(AppendParametersComponent.class).getActivateExtension(appendParametersUrl, (String[]) null);

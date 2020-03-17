@@ -16,29 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.dubbo.demo.consumer.comp;
 
-import org.apache.dubbo.config.annotation.Reference;
+import org.apache.dubbo.config.annotation.Service;
 import org.apache.dubbo.demo.DemoService;
+import org.apache.dubbo.rpc.RpcContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import org.springframework.stereotype.Component;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.net.URL;
-import java.nio.charset.Charset;
 import java.util.concurrent.CompletableFuture;
 
-@Component("demoServiceComponent")
-public class DemoServiceComponent implements DemoService {
-    @Reference
-    private DemoService demoService;
+@Service
+public class DemoServiceImpl implements DemoService {
+    private static final Logger logger = LoggerFactory.getLogger(DemoServiceImpl.class);
 
     @Override
     public String sayHello(String name) {
-        return demoService.sayHello(name);
+        logger.info("Hello " + name + ", request from consumer: " + RpcContext.getContext().getRemoteAddress());
+        return "Hello " + name + ", response from provider: " + RpcContext.getContext().getLocalAddress();
     }
 
     @Override
@@ -46,14 +41,4 @@ public class DemoServiceComponent implements DemoService {
         return null;
     }
 
-    public static void main(String[] args) throws IOException {
-        URL resource = DemoService.class.getClassLoader().getResource("log4j.properties");
-        FileInputStream fileInputStream = new FileInputStream(new File(resource.getPath()));
-        Charset charset = Charset.forName("UTF-8");
-        byte[] bytes = new byte[fileInputStream.available()];
-        int read = fileInputStream.read(bytes);
-        String x = new String(bytes, 0, read, charset);
-        System.out.println(x);
-        System.out.println(resource);
-    }
 }

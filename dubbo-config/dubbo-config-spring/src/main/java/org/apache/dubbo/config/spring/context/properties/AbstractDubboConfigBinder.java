@@ -21,6 +21,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.env.PropertySource;
 
 /**
+ *  * 这个也没用到，使用的是 {@link com.alibaba.spring.context.config.ConfigurationBeanBinder#bind}
  * Abstract {@link DubboConfigBinder} implementation
  */
 public abstract class AbstractDubboConfigBinder implements DubboConfigBinder {

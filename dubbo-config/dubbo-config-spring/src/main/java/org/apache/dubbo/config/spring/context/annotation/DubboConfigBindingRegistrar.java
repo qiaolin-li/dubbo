@@ -54,7 +54,7 @@ import static org.springframework.core.annotation.AnnotationAttributes.fromMap;
 
 /**
  * {@link AbstractConfig Dubbo Config} binding Bean registrar
- *
+ * Dubbo配置绑定bean注册器，已经废了，目前使用 {@link ConfigurationBeanBindingRegistrar}
  * @see EnableDubboConfigBinding
  * @see DubboConfigBindingBeanPostProcessor
  * @since 2.5.8
@@ -177,6 +177,13 @@ public class DubboConfigBindingRegistrar implements ImportBeanDefinitionRegistra
 
     }
 
+    /**
+     *  解析多配置时的配置名
+     *  例如：dubbo.application.xx.name，其实在前面过滤掉了 dubbo.application, 已经变成了 xx.name，
+     *  然后xx就是这个配置的beanName
+     * @param properties
+     * @return
+     */
     private Set<String> resolveMultipleBeanNames(Map<String, Object> properties) {
 
         Set<String> beanNames = new LinkedHashSet<String>();

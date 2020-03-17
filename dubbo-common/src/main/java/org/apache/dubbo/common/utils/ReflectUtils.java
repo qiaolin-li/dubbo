@@ -934,6 +934,9 @@ public final class ReflectUtils {
         return findMethodByMethodSignature(clazz, methodName, null);
     }
 
+    /**
+     *  找到存根（Stub）的构造器，构造器的参数必须是要暴露接口的类型或者子类型
+     */
     public static Constructor<?> findConstructor(Class<?> clazz, Class<?> paramType) throws NoSuchMethodException {
         Constructor<?> targetConstructor;
         try {

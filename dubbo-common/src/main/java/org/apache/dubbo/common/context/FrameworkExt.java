@@ -18,6 +18,11 @@ package org.apache.dubbo.common.context;
 
 import org.apache.dubbo.common.extension.SPI;
 
+/**
+ * TODO 框架扩展？
+ * @author Administrator
+ */
+
 @SPI
 public interface FrameworkExt extends Lifecycle {
 
