@@ -26,7 +26,11 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CompletableFuture;
 
-@Service
+/**
+ *  测试@Reference的类是本地待暴露的服务@Service，测试小开启@Service
+ */
+
+//@Service
 public class DemoServiceImpl implements DemoService {
     private static final Logger logger = LoggerFactory.getLogger(DemoServiceImpl.class);
 
