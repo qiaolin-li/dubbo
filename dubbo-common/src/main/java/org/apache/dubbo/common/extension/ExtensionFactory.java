@@ -18,13 +18,14 @@ package org.apache.dubbo.common.extension;
 
 /**
  * ExtensionFactory
+ * 扩展工厂，主要给扩展类注入属性
  */
 @SPI
 public interface ExtensionFactory {
 
     /**
      * Get extension.
-     *
+     * 获取扩展
      * @param type object type.
      * @param name object name.
      * @return object instance.

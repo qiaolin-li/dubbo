@@ -22,13 +22,21 @@ import org.apache.dubbo.common.extension.SPI;
 
 /**
  * SpiExtensionFactory
+ * 给扩展对象属性赋值，属性必须是接口，并且接口上必须标记了SPI注解
  */
 public class SpiExtensionFactory implements ExtensionFactory {
 
     @Override
     public <T> T getExtension(Class<T> type, String name) {
+
+        // 如果是SPI，那么从扩展加载器中获取
         if (type.isInterface() && type.isAnnotationPresent(SPI.class)) {
+
+            // 找到这个类型的扩展加载器
             ExtensionLoader<T> loader = ExtensionLoader.getExtensionLoader(type);
+
+            // 如果存在扩展类的话，返回适配扩展对象
+            // TODO 为什么返回适配扩展对象呢？难道是要靠适配扩展对象去路由到真实对象
             if (!loader.getSupportedExtensions().isEmpty()) {
                 return loader.getAdaptiveExtension();
             }

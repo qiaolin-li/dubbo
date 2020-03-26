@@ -30,10 +30,12 @@ import java.util.Set;
 
 /**
  * SpringExtensionFactory
+ * 从Spring ioc中获取扩展类需要的属性
  */
 public class SpringExtensionFactory implements ExtensionFactory {
     private static final Logger logger = LoggerFactory.getLogger(SpringExtensionFactory.class);
 
+    /** IOC 容器集合 */
     private static final Set<ApplicationContext> CONTEXTS = new ConcurrentHashSet<ApplicationContext>();
 
     public static void addApplicationContext(ApplicationContext context) {
@@ -61,11 +63,15 @@ public class SpringExtensionFactory implements ExtensionFactory {
     public <T> T getExtension(Class<T> type, String name) {
 
         //SPI should be get from SpiExtensionFactory
+        // 如果要注入的类型是接口，并且类型上面带有SPI注解，
+        // 那么应该使用另一个 ExtensionFactory实现类 SpiExtensionFactory 来做
         if (type.isInterface() && type.isAnnotationPresent(SPI.class)) {
             return null;
         }
 
+        // 从IOC中获取bean
         for (ApplicationContext context : CONTEXTS) {
+
             T bean = BeanFactoryUtils.getOptionalBean(context, name, type);
             if (bean != null) {
                 return bean;

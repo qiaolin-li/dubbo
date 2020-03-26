@@ -26,7 +26,9 @@ import java.lang.annotation.Target;
 
 /**
  * Provide helpful information for {@link ExtensionLoader} to inject dependency extension instance.
- *
+ * 扩展适配，一个类型的适配类智能有一个，例如 ${@link ExtensionFactory},
+ * 他的适配类为 {@link org.apache.dubbo.common.extension.factory.AdaptiveExtensionFactory}
+ * 一般是为了解决有多个扩展类时能有个统一的入口，然后根据条件来调用指定的扩展类
  * @see ExtensionLoader
  * @see URL
  */
@@ -52,6 +54,9 @@ public @interface Adaptive {
      * class name with the rule: divide classname from capital char into several parts, and separate the parts with
      * dot '.', for example, for {@code org.apache.dubbo.xxx.YyyInvokerWrapper}, the generated name is
      * <code>String[] {"yyy.invoker.wrapper"}</code>.
+     *
+     * 指定扩展类的扩展名，即SPI文件中的扩展类对应的扩展名，
+     * 如果value = xx,zz,cc 那么找到其中一个就可以，先找xx,然后zz,最后cc
      *
      * @return parameter names in URL
      */

@@ -51,6 +51,8 @@ import java.lang.annotation.Target;
  * instead of reporting which extract extension implementation fails and the extract reason.
  * </p>
  *
+ * 定义扩展类的名称
+ *
  * @deprecated because it's too general, switch to use {@link org.apache.dubbo.common.extension.SPI}
  */
 @Deprecated

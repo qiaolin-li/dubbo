@@ -18,9 +18,11 @@ package org.apache.dubbo.common.utils;
 
 /**
  * Helper Class for hold a value.
+ * 包装一个对象，用于内存可见
  */
 public class Holder<T> {
 
+    /** 持有的对象 */
     private volatile T value;
 
     public void set(T value) {

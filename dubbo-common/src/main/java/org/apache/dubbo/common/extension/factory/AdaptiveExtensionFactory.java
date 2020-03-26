@@ -26,15 +26,23 @@ import java.util.List;
 
 /**
  * AdaptiveExtensionFactory
+ * 适配 扩展工厂类
+ * 适配类主要是管理了其他的扩展类，相当于一个路由一样
+ * @Adaptive 标记了自己是一个适配
  */
+
 @Adaptive
 public class AdaptiveExtensionFactory implements ExtensionFactory {
 
     private final List<ExtensionFactory> factories;
 
     public AdaptiveExtensionFactory() {
+
+        // 获取 ExtensionFactory的扩展加载器
         ExtensionLoader<ExtensionFactory> loader = ExtensionLoader.getExtensionLoader(ExtensionFactory.class);
         List<ExtensionFactory> list = new ArrayList<ExtensionFactory>();
+
+        //  加载所有的扩展加载器
         for (String name : loader.getSupportedExtensions()) {
             list.add(loader.getExtension(name));
         }
@@ -43,6 +51,7 @@ public class AdaptiveExtensionFactory implements ExtensionFactory {
 
     @Override
     public <T> T getExtension(Class<T> type, String name) {
+        // 取其他的扩展工厂获取
         for (ExtensionFactory factory : factories) {
             T extension = factory.getExtension(type, name);
             if (extension != null) {
