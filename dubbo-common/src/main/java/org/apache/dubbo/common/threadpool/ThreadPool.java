@@ -26,6 +26,7 @@ import static org.apache.dubbo.common.constants.CommonConstants.THREADPOOL_KEY;
 
 /**
  * ThreadPool
+ * 抽象线程池接口
  */
 @SPI("fixed")
 public interface ThreadPool {

@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * EagerThreadPoolExecutor
+ * 这个线程池会记录当前任务的个数
  */
 public class EagerThreadPoolExecutor extends ThreadPoolExecutor {
 
@@ -52,6 +53,7 @@ public class EagerThreadPoolExecutor extends ThreadPoolExecutor {
 
     @Override
     protected void afterExecute(Runnable r, Throwable t) {
+        // 任务执行完时，减少当前任务数
         submittedTaskCount.decrementAndGet();
     }
 
@@ -61,23 +63,30 @@ public class EagerThreadPoolExecutor extends ThreadPoolExecutor {
             throw new NullPointerException();
         }
         // do not increment in method beforeExecute!
+        // 增加当前任务数量
         submittedTaskCount.incrementAndGet();
         try {
             super.execute(command);
         } catch (RejectedExecutionException rx) {
             // retry to offer the task into queue.
+            // 任务被拒绝时，再次尝试在某一段时间内入队
             final TaskQueue queue = (TaskQueue) super.getQueue();
             try {
                 if (!queue.retryOffer(command, 0, TimeUnit.MILLISECONDS)) {
+
+                    // 入队失败，减少当前任务数量
                     submittedTaskCount.decrementAndGet();
                     throw new RejectedExecutionException("Queue capacity is full.", rx);
                 }
             } catch (InterruptedException x) {
+
+                // 入队失败，减少当前任务数量
                 submittedTaskCount.decrementAndGet();
                 throw new RejectedExecutionException(x);
             }
         } catch (Throwable t) {
-            // decrease any way
+
+            // 入队失败，减少当前任务数量
             submittedTaskCount.decrementAndGet();
             throw t;
         }

@@ -36,6 +36,7 @@ import static org.apache.dubbo.common.constants.CommonConstants.DUMP_DIRECTORY;
 /**
  * Abort Policy.
  * Log warn info when abort.
+ * 中断策略，打印警告日志和10分钟dump一下线程栈信息
  */
 public class AbortPolicyWithReport extends ThreadPoolExecutor.AbortPolicy {
 
@@ -75,6 +76,8 @@ public class AbortPolicyWithReport extends ThreadPoolExecutor.AbortPolicy {
             e.getTaskCount(), e.getCompletedTaskCount(), e.isShutdown(), e.isTerminated(), e.isTerminating(),
             url.getProtocol(), url.getIp(), url.getPort());
         logger.warn(msg);
+
+        // dump线程栈信息
         dumpJStack();
         throw new RejectedExecutionException(msg);
     }
