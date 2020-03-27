@@ -22,6 +22,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ *  扩展类不想注入某个属性的时候使用该注解，
+ *  因为SPI加载扩展类会尝试给所有set方法去装配需要的对象
+ */
+
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.METHOD})

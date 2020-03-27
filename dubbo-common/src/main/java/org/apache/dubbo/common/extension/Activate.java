@@ -47,6 +47,7 @@ public @interface Activate {
      * Activate the current extension when one of the groups matches. The group passed into
      * {@link ExtensionLoader#getActivateExtension(URL, String, String)} will be used for matching.
      *
+     * Group过滤，条件，当是一个组的时候才会被激活
      * @return group names to match
      * @see ExtensionLoader#getActivateExtension(URL, String, String)
      */
@@ -58,7 +59,9 @@ public @interface Activate {
      * For example, given <code>@Activate("cache, validation")</code>, the current extension will be return only when
      * there's either <code>cache</code> or <code>validation</code> key appeared in the URL's parameters.
      * </p>
-     *
+     * 当value指定的参数出现到URL的parameters中时，激活扩展类
+     * 例如：value = cache,validate， 则URL参数携带有cache或validate时返回扩展类
+     * 如果value=={},代表不限制激活，
      * @return URL parameter keys
      * @see ExtensionLoader#getActivateExtension(URL, String)
      * @see ExtensionLoader#getActivateExtension(URL, String, String)

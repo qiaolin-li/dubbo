@@ -26,7 +26,7 @@ import java.lang.annotation.Target;
 
 /**
  * Provide helpful information for {@link ExtensionLoader} to inject dependency extension instance.
- * 扩展适配，一个类型的适配类智能有一个，例如 ${@link ExtensionFactory},
+ * 扩展适配，一个类型的适配类只能有一个，例如 ${@link ExtensionFactory},
  * 他的适配类为 {@link org.apache.dubbo.common.extension.factory.AdaptiveExtensionFactory}
  * 一般是为了解决有多个扩展类时能有个统一的入口，然后根据条件来调用指定的扩展类
  * @see ExtensionLoader

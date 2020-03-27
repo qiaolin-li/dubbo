@@ -16,8 +16,12 @@
  */
 package org.apache.dubbo.common.context;
 
+import org.apache.dubbo.common.extension.ExtensionLoader;
+
 /**
  * Dubbo 组件生命周期
+ * 扩展类要是实现了这个接口，那么他会在装配完依赖之后调用 {@link #initialize()}方法，
+ * 见{@link ExtensionLoader#initExtension(Object)}
  * @author Administrator
  * @since 2.7.5
  */

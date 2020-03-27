@@ -29,6 +29,7 @@ import java.util.stream.IntStream;
 
 /**
  * Code generator for Adaptive class
+ * 扩展适配类Class生成器
  */
 public class AdaptiveClassCodeGenerator {
 
@@ -86,13 +87,20 @@ public class AdaptiveClassCodeGenerator {
      */
     public String generate() {
         // no need to generate adaptive class since there's no adaptive method found.
+        // 如果type的方法上没有一个@Adapter注解，则不需要生成扩展适配器class
         if (!hasAdaptiveMethod()) {
             throw new IllegalStateException("No adaptive method exist on extension " + type.getName() + ", refuse to create the adaptive class!");
         }
 
         StringBuilder code = new StringBuilder();
+
+        // 生成包信息
         code.append(generatePackageInfo());
+
+        // 导入扩展加载器依赖
         code.append(generateImports());
+
+        // 类名和实现type接口
         code.append(generateClassDeclaration());
 
         Method[] methods = type.getMethods();
@@ -198,33 +206,45 @@ public class AdaptiveClassCodeGenerator {
     private String generateMethodContent(Method method) {
         Adaptive adaptiveAnnotation = method.getAnnotation(Adaptive.class);
         StringBuilder code = new StringBuilder(512);
+
+        // 适配注解为空时，方法的实现为抛出一个不支持的异常
         if (adaptiveAnnotation == null) {
             return generateUnsupported(method);
         } else {
+
+            // 查找方法参数URL在参数列表中的位置
             int urlTypeIndex = getUrlTypeIndex(method);
 
-            // found parameter in URL type
+            // 找到了URL参数
             if (urlTypeIndex != -1) {
-                // Null Point check
+
+                // 增加URL空检查
                 code.append(generateUrlNullCheck(urlTypeIndex));
             } else {
-                // did not find parameter in URL type
+
+                // 在参数列表中没有找到URL类型的参数，则取参数的属性找
                 code.append(generateUrlAssignmentIndirectly(method));
             }
 
+            // 获取适配的值 @Adaptive({"aa", "bb"}) ==> {"aa", "bb"}
             String[] value = getMethodAdaptiveValue(adaptiveAnnotation);
 
+            // 是否存在 Invocation 参数
             boolean hasInvocation = hasInvocationArgument(method);
 
             code.append(generateInvocationArgumentNullCheck(method));
 
+            // 获取真正执行的扩展类的扩展名
             code.append(generateExtNameAssignment(value, hasInvocation));
+
             // check extName == null?
             code.append(generateExtNameNullCheck(value));
 
+            // 通过ExtensionLoader获取扩展类的方法
             code.append(generateExtensionAssignment());
 
             // return statement
+            // 如果方法有返回值，他会去调用指定的扩展类的当前方法
             code.append(generateReturnAndInvocation(method));
         }
 
@@ -344,7 +364,7 @@ public class AdaptiveClassCodeGenerator {
     private String generateUrlAssignmentIndirectly(Method method) {
         Class<?>[] pts = method.getParameterTypes();
 
-        // find URL getter method
+        // 从参数中寻找URL属性
         for (int i = 0; i < pts.length; ++i) {
             for (Method m : pts[i].getMethods()) {
                 String name = m.getName();
