@@ -24,17 +24,24 @@ import java.util.Map;
 
 /**
  * InjvmExporter
+ * 服务本地暴露器
  */
 class InjvmExporter<T> extends AbstractExporter<T> {
 
+    /** 服务key */
     private final String key;
 
+    /**
+     * Map<服务key, 暴露器>
+     */
     private final Map<String, Exporter<?>> exporterMap;
 
     InjvmExporter(Invoker<T> invoker, String key, Map<String, Exporter<?>> exporterMap) {
         super(invoker);
         this.key = key;
         this.exporterMap = exporterMap;
+
+        // 将自己追加到导出器Map
         exporterMap.put(key, this);
     }
 

@@ -36,6 +36,9 @@ import static org.apache.dubbo.common.constants.QosConstants.QOS_ENABLE;
 import static org.apache.dubbo.common.constants.QosConstants.QOS_HOST;
 import static org.apache.dubbo.common.constants.QosConstants.QOS_PORT;
 
+/**
+ *  服务质量监控
+ */
 
 public class QosProtocolWrapper implements Protocol {
 
@@ -59,6 +62,8 @@ public class QosProtocolWrapper implements Protocol {
 
     @Override
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
+
+        // 服务远程暴露的话
         if (UrlUtils.isRegistry(invoker.getUrl())) {
             startQosServer(invoker.getUrl());
             return protocol.export(invoker);

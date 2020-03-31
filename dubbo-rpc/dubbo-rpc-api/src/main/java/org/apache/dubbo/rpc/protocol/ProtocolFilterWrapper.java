@@ -50,10 +50,14 @@ public class ProtocolFilterWrapper implements Protocol {
     }
 
     private static <T> Invoker<T> buildInvokerChain(final Invoker<T> invoker, String key, String group) {
+        // 将invoke放到最后一个，即链后的最后一个节点
         Invoker<T> last = invoker;
+
+        // 获取所有的filter
         List<Filter> filters = ExtensionLoader.getExtensionLoader(Filter.class).getActivateExtension(invoker.getUrl(), key, group);
 
         if (!filters.isEmpty()) {
+            // 从后至前的包装建立filter链
             for (int i = filters.size() - 1; i >= 0; i--) {
                 final Filter filter = filters.get(i);
                 final Invoker<T> next = last;
@@ -78,6 +82,7 @@ public class ProtocolFilterWrapper implements Protocol {
                     public Result invoke(Invocation invocation) throws RpcException {
                         Result asyncResult;
                         try {
+                            // 异步结果
                             asyncResult = filter.invoke(next, invocation);
                         } catch (Exception e) {
                             if (filter instanceof ListenableFilter) {// Deprecated!
@@ -85,6 +90,8 @@ public class ProtocolFilterWrapper implements Protocol {
                                 if (listener != null) {
                                     listener.onError(e, invoker, invocation);
                                 }
+
+                                // 如果当前的filter实现了 Filter.Listener接口，那么出错了调用filter的 onError
                             } else if (filter instanceof Filter.Listener) {
                                 Filter.Listener listener = (Filter.Listener) filter;
                                 listener.onError(e, invoker, invocation);
@@ -93,6 +100,7 @@ public class ProtocolFilterWrapper implements Protocol {
                         } finally {
 
                         }
+                        // 绑定一个完成事件，用于调用filter的监听方法
                         return asyncResult.whenCompleteWithContext((r, t) -> {
                             if (filter instanceof ListenableFilter) {// Deprecated!
                                 Filter.Listener listener = ((ListenableFilter) filter).listener();
@@ -103,6 +111,8 @@ public class ProtocolFilterWrapper implements Protocol {
                                         listener.onError(t, invoker, invocation);
                                     }
                                 }
+
+                                // 如果filter 实现了Filter.Listener，调用对应的方法
                             } else if (filter instanceof Filter.Listener) {
                                 Filter.Listener listener = (Filter.Listener) filter;
                                 if (t == null) {
@@ -139,9 +149,12 @@ public class ProtocolFilterWrapper implements Protocol {
 
     @Override
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
+        // 是否是注册的url，也可以说是远程暴露服务
         if (UrlUtils.isRegistry(invoker.getUrl())) {
             return protocol.export(invoker);
         }
+
+        // 本地暴露服务，创建filter链 TODO 那么远程的没有Filter
         return protocol.export(buildInvokerChain(invoker, SERVICE_FILTER_KEY, CommonConstants.PROVIDER));
     }
 

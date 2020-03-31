@@ -25,13 +25,14 @@ import java.util.List;
 
 /**
  * Protocol. (API/SPI, Singleton, ThreadSafe)
+ * 协议接口
  */
 @SPI("dubbo")
 public interface Protocol {
 
     /**
      * Get default port when user doesn't config the port.
-     *
+     * 获取默认端口， TODO 当用户不配置的使用调用？
      * @return default port
      */
     int getDefaultPort();

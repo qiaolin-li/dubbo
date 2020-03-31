@@ -120,11 +120,15 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
     @SuppressWarnings("AlibabaThreadPoolCreation")
     private static final ScheduledExecutorService DELAY_EXPORT_EXECUTOR = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("DubboServiceDelayExporter", true));
 
+    /**
+     * 协议适配对象
+     */
     private static final Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
 
     /**
      * A {@link ProxyFactory} implementation that will generate a exported service proxy,the JavassistProxyFactory is its
      * default implementation
+     * 代理工厂适配对象，动态生成的
      */
     private static final ProxyFactory PROXY_FACTORY = ExtensionLoader.getExtensionLoader(ProxyFactory.class).getAdaptiveExtension();
 
@@ -143,6 +147,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
     /**
      * The exported services
+     * 这个是已经导出的服务 TODO 是不是啊？还是说导出器
      */
     private final List<Exporter<?>> exporters = new ArrayList<Exporter<?>>();
 
@@ -205,7 +210,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         // 检查并且更新子配置
         checkAndUpdateSubConfigs();
 
-        //init serviceMetadata
+        // init serviceMetadata
         serviceMetadata.setVersion(version);
         serviceMetadata.setGroup(group);
         serviceMetadata.setDefaultGroup(group);
@@ -371,18 +376,13 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         // 注册Provider到ServiceRepository
         ServiceRepository repository = ApplicationModel.getServiceRepository();
         ServiceDescriptor serviceDescriptor = repository.registerService(getInterfaceClass());
-        repository.registerProvider(
-                getUniqueServiceName(),
-                ref,
-                serviceDescriptor,
-                this,
-                serviceMetadata
-        );
+        repository.registerProvider(getUniqueServiceName(), ref, serviceDescriptor,
+                this, serviceMetadata );
 
         // 加载注册的URL
         List<URL> registryURLs = ConfigValidationUtils.loadRegistries(this, true);
 
-        //
+        // 将服务按照协议配置导出
         for (ProtocolConfig protocolConfig : protocols) {
             // 路径key
             String pathKey = URL.buildKey(getContextPath(protocolConfig)
@@ -475,10 +475,13 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         }
 
         String scope = url.getParameter(SCOPE_KEY);
+
         // don't export when none is configured
+        // 如果配置为none，则不导出
         if (!SCOPE_NONE.equalsIgnoreCase(scope)) {
 
             // export to local if the config is not remote (export to remote only when config is remote)
+            // 如果配置不等于 remote，则导出到本地
             if (!SCOPE_REMOTE.equalsIgnoreCase(scope)) {
                 exportLocal(url);
             }
@@ -597,6 +600,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
     @SuppressWarnings({"unchecked", "rawtypes"})
     /**
      * always export injvm
+     * 暴露服务到本地
      */
     private void exportLocal(URL url) {
         URL local = URLBuilder.from(url)
@@ -604,8 +608,12 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 .setHost(LOCALHOST_VALUE)
                 .setPort(0)
                 .build();
+
+        // 导出器
         Exporter<?> exporter = protocol.export(
                 PROXY_FACTORY.getInvoker(ref, (Class) interfaceClass, local));
+
+        // 将导出器增加到集合
         exporters.add(exporter);
         logger.info("Export dubbo service " + interfaceClass.getName() + " to local registry url : " + local);
     }

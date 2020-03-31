@@ -27,13 +27,16 @@ import java.util.List;
 
 /**
  * ListenerExporter
+ * 包装Listener的暴露器
  */
 public class ListenerExporterWrapper<T> implements Exporter<T> {
 
     private static final Logger logger = LoggerFactory.getLogger(ListenerExporterWrapper.class);
 
+    /** 暴露器 */
     private final Exporter<T> exporter;
 
+    /** 监听器 */
     private final List<ExporterListener> listeners;
 
     public ListenerExporterWrapper(Exporter<T> exporter, List<ExporterListener> listeners) {
@@ -44,6 +47,8 @@ public class ListenerExporterWrapper<T> implements Exporter<T> {
         this.listeners = listeners;
         if (CollectionUtils.isNotEmpty(listeners)) {
             RuntimeException exception = null;
+
+            /// TODO 为啥创建这个对象的时候就通知监听器暴露完成呢？难道本地服务不需要暴露，？？？
             for (ExporterListener listener : listeners) {
                 if (listener != null) {
                     try {
@@ -70,6 +75,7 @@ public class ListenerExporterWrapper<T> implements Exporter<T> {
         try {
             exporter.unexport();
         } finally {
+            // 服务取消暴露完成后，通知所有监听器
             if (CollectionUtils.isNotEmpty(listeners)) {
                 RuntimeException exception = null;
                 for (ExporterListener listener : listeners) {

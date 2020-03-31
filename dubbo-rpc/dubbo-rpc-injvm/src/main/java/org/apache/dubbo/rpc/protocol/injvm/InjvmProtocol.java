@@ -37,12 +37,16 @@ import static org.apache.dubbo.rpc.Constants.LOCAL_PROTOCOL;
 
 /**
  * InjvmProtocol
+ * 本地服务暴露协议
  */
 public class InjvmProtocol extends AbstractProtocol implements Protocol {
 
     public static final String NAME = LOCAL_PROTOCOL;
 
+    // 本地默认端口
     public static final int DEFAULT_PORT = 0;
+
+    // 利用SPI产生的实例
     private static InjvmProtocol INSTANCE;
 
     public InjvmProtocol() {
