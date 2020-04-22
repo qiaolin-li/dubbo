@@ -176,10 +176,12 @@ public class RpcInvocation implements Invocation, Serializable {
         this.invoker = invoker;
     }
 
+    @Override
     public Object put(Object key, Object value) {
         return attributes.put(key, value);
     }
 
+    @Override
     public Object get(Object key) {
         return attributes.get(key);
     }
@@ -233,6 +235,7 @@ public class RpcInvocation implements Invocation, Serializable {
         this.parameterTypesDesc = parameterTypesDesc;
     }
 
+    @Override
     public String[] getCompatibleParamSignatures() {
         return compatibleParamSignatures;
     }
@@ -258,19 +261,21 @@ public class RpcInvocation implements Invocation, Serializable {
     }
 
     public void setAttachments(Map<String, String> attachments) {
-        this.attachments = attachments == null ? new HashMap<String, String>() : attachments;
+        this.attachments = attachments == null ? new HashMap<>() : attachments;
     }
 
+    @Override
     public void setAttachment(String key, String value) {
         if (attachments == null) {
-            attachments = new HashMap<String, String>();
+            attachments = new HashMap<>();
         }
         attachments.put(key, value);
     }
 
+    @Override
     public void setAttachmentIfAbsent(String key, String value) {
         if (attachments == null) {
-            attachments = new HashMap<String, String>();
+            attachments = new HashMap<>();
         }
         if (!attachments.containsKey(key)) {
             attachments.put(key, value);
@@ -282,7 +287,7 @@ public class RpcInvocation implements Invocation, Serializable {
             return;
         }
         if (this.attachments == null) {
-            this.attachments = new HashMap<String, String>();
+            this.attachments = new HashMap<>();
         }
         this.attachments.putAll(attachments);
     }

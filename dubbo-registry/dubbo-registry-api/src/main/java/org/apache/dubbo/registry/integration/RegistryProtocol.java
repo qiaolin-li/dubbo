@@ -109,8 +109,10 @@ import static org.apache.dubbo.rpc.cluster.Constants.WEIGHT_KEY;
 
 /**
  * RegistryProtocol
+ * 注册中心协议
  */
 public class RegistryProtocol implements Protocol {
+
     public static final String[] DEFAULT_REGISTER_PROVIDER_KEYS = {
             APPLICATION_KEY, CODEC_KEY, EXCHANGER_KEY, SERIALIZATION_KEY, CLUSTER_KEY, CONNECTIONS_KEY, DEPRECATED_KEY,
             GROUP_KEY, LOADBALANCE_KEY, MOCK_KEY, PATH_KEY, TIMEOUT_KEY, TOKEN_KEY, VERSION_KEY, WARMUP_KEY,
@@ -184,25 +186,30 @@ public class RegistryProtocol implements Protocol {
 
     @Override
     public <T> Exporter<T> export(final Invoker<T> originInvoker) throws RpcException {
+
+        // 获取真正的注册地址  zookeeper://xx
         URL registryUrl = getRegistryUrl(originInvoker);
-        // url to export locally
+
+        // 提供者url  dubbo://xx 或 xxxx://xx
         URL providerUrl = getProviderUrl(originInvoker);
 
         // Subscribe the override data
         // FIXME When the provider subscribes, it will affect the scene : a certain JVM exposes the service and call
         //  the same service. Because the subscribed is cached key with the name of the service, it causes the
         //  subscription information to cover.
+        // TODO 搞不清楚这是些啥， 提供者还需要订阅什么东西，   集群容错时会知道
         final URL overrideSubscribeUrl = getSubscribedOverrideUrl(providerUrl);
         final OverrideListener overrideSubscribeListener = new OverrideListener(overrideSubscribeUrl, originInvoker);
         overrideListeners.put(overrideSubscribeUrl, overrideSubscribeListener);
-
         providerUrl = overrideUrlWithConfig(providerUrl, overrideSubscribeListener);
-        //export invoker
+
+        // 暴露服务/暴露invoker Dubbo/其他
         final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker, providerUrl);
 
-        // url to registry
+        // 根据url获取注册中心
         final Registry registry = getRegistry(originInvoker);
         final URL registeredProviderUrl = getUrlToRegistry(providerUrl, registryUrl);
+
         // decide if we need to delay publish
         boolean register = providerUrl.getParameter(REGISTER_KEY, true);
         if (register) {
@@ -214,6 +221,8 @@ public class RegistryProtocol implements Protocol {
 
         exporter.setRegisterUrl(registeredProviderUrl);
         exporter.setSubscribeUrl(overrideSubscribeUrl);
+
+        // 可销毁的暴露器
         //Ensure that a new exporter instance is returned every time export
         return new DestroyableExporter<>(exporter);
     }
@@ -229,8 +238,13 @@ public class RegistryProtocol implements Protocol {
     private <T> ExporterChangeableWrapper<T> doLocalExport(final Invoker<T> originInvoker, URL providerUrl) {
         String key = getCacheKey(originInvoker);
 
+        // 1、如果有缓存的话可以直接返回
+        // 2、没有缓存时去暴露一下服务
         return (ExporterChangeableWrapper<T>) bounds.computeIfAbsent(key, s -> {
             Invoker<?> invokerDelegate = new InvokerDelegate<>(originInvoker, providerUrl);
+
+            // 这里的originInvoker 中的url是 providerUrl哈，
+            // 所以，这个 protocol 就是你真正要暴露服务的的协议，如 Dubbo，injvm..
             return new ExporterChangeableWrapper<>((Exporter<T>) protocol.export(invokerDelegate), originInvoker);
         });
     }
@@ -298,6 +312,13 @@ public class RegistryProtocol implements Protocol {
         return registryFactory.getRegistry(registryUrl);
     }
 
+    /**
+     *  获取注册url 如果originInvoker中的url协议为 registry的话，
+     *  他会将 registry 参数设置到协议，这一步是为了恢复真正的注册协议
+     *  如果是registry : registry://xxx ===> dubbo://xxx 或者 injvm://xxx
+     * @param originInvoker
+     * @return
+     */
     protected URL getRegistryUrl(Invoker<?> originInvoker) {
         URL registryUrl = originInvoker.getUrl();
         if (REGISTRY_PROTOCOL.equals(registryUrl.getProtocol())) {
@@ -352,7 +373,7 @@ public class RegistryProtocol implements Protocol {
 
     /**
      * Get the address of the providerUrl through the url of the invoker
-     *
+     * 获取提供者 url 即 originInvoker中url 的 export参数
      * @param originInvoker
      * @return
      */
@@ -379,16 +400,25 @@ public class RegistryProtocol implements Protocol {
     @Override
     @SuppressWarnings("unchecked")
     public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
+        // 获取注册协议 dubbo://xxx 或者  xxxx://xxxx
         url = getRegistryUrl(url);
+
+        // 根据注册协议获取到注册器
         Registry registry = registryFactory.getRegistry(url);
+
+        // TODO 为什么type=RegistryService时直接就调用了
         if (RegistryService.class.equals(type)) {
             return proxyFactory.getInvoker((T) registry, type, url);
         }
 
         // group="a,b" or group="*"
+        // 获取 refer的参数
         Map<String, String> qs = StringUtils.parseQueryString(url.getParameterAndDecoded(REFER_KEY));
+
+        // 获取要调用的组
         String group = qs.get(GROUP_KEY);
         if (group != null && group.length() > 0) {
+            // 如果有多个分组或者分组为*的话，需要合并结果集
             if ((COMMA_SPLIT_PATTERN.split(group)).length > 1 || "*".equals(group)) {
                 return doRefer(getMergeableCluster(), registry, type, url);
             }
@@ -400,21 +430,44 @@ public class RegistryProtocol implements Protocol {
         return ExtensionLoader.getExtensionLoader(Cluster.class).getExtension("mergeable");
     }
 
+    /**
+     *  执行引用逻辑，并且返回invoker对象
+     * @param cluster TODO 集群？？？？
+     * @param registry 注册中心
+     * @param type 要引用的类型
+     * @param url 引用的url
+     * @param <T>
+     * @return
+     */
     private <T> Invoker<T> doRefer(Cluster cluster, Registry registry, Class<T> type, URL url) {
+        // 创建 RegistryDirectory
         RegistryDirectory<T> directory = new RegistryDirectory<T>(type, url);
+
+        // 设置注册中心
         directory.setRegistry(registry);
+
+        // 设置协议
         directory.setProtocol(protocol);
+
         // all attributes of REFER_KEY
-        Map<String, String> parameters = new HashMap<String, String>(directory.getUrl().getParameters());
+        // 创建订阅URLx  directory.url 包含了refer的一些属性，并不等于上面的 url
+        Map<String, String> parameters = new HashMap<>(directory.getUrl().getParameters());
         URL subscribeUrl = new URL(CONSUMER_PROTOCOL, parameters.remove(REGISTER_IP_KEY), 0, type.getName(), parameters);
+
+        // serviceInterface != * 并且 register == true时注册消费者
         if (!ANY_VALUE.equals(url.getServiceInterface()) && url.getParameter(REGISTER_KEY, true)) {
             directory.setRegisteredConsumerUrl(getRegisteredConsumerUrl(subscribeUrl, url));
             registry.register(directory.getRegisteredConsumerUrl());
         }
+
+        // TODO 神马是路由链？？
         directory.buildRouterChain(subscribeUrl);
+
+        // 向注册中心订阅服务
         directory.subscribe(subscribeUrl.addParameter(CATEGORY_KEY,
                 PROVIDERS_CATEGORY + "," + CONFIGURATORS_CATEGORY + "," + ROUTERS_CATEGORY));
 
+        // 创建invoker
         Invoker invoker = cluster.join(directory);
         return invoker;
     }

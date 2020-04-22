@@ -59,6 +59,7 @@ public abstract class ReferenceConfigBase<T> extends AbstractReferenceConfig {
 
     /**
      * 点对点直连服务提供者地址，将绕过注册中心
+     * @see {@link Reference#url()}
      */
     protected String url;
 

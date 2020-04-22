@@ -171,6 +171,11 @@ public class RpcUtils {
         return isAsync;
     }
 
+    /**
+     *  返回值是否是 Future
+     * @param inv
+     * @return
+     */
     public static boolean isReturnTypeFuture(Invocation inv) {
         Class<?> clazz;
         if (inv instanceof RpcInvocation) {
@@ -178,6 +183,7 @@ public class RpcUtils {
         } else {
             clazz = getReturnType(inv);
         }
+
         return (clazz != null && CompletableFuture.class.isAssignableFrom(clazz)) || isGenericAsync(inv);
     }
 

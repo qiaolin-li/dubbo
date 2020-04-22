@@ -116,10 +116,6 @@ public abstract class AbstractConfig implements Serializable {
         return StringUtils.camelToSplitName(tag, "-");
     }
 
-    public static void appendParameters(Map<String, String> parameters, Object config) {
-        appendParameters(parameters, config, null);
-    }
-
     /**
      * 提取类中的参数数据，并放入 parameter这个map中
      * @param parameters 整理的参数
@@ -185,6 +181,10 @@ public abstract class AbstractConfig implements Serializable {
                 throw new IllegalStateException(e.getMessage(), e);
             }
         }
+    }
+
+    public static void appendParameters(Map<String, String> parameters, Object config) {
+        appendParameters(parameters, config, null);
     }
 
     @Deprecated

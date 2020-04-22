@@ -16,6 +16,7 @@
  */
 package org.apache.dubbo.rpc.protocol;
 
+import com.sun.xml.internal.bind.v2.TODO;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
@@ -50,11 +51,14 @@ public abstract class AbstractProtocol implements Protocol {
 
     /**
      * <host:port, ProtocolServer>
+     * 服务器缓存，因为多个接口可能是一个服务器
      */
     protected final Map<String, ProtocolServer> serverMap = new ConcurrentHashMap<>();
 
-    //TODO SoftReference
-    protected final Set<Invoker<?>> invokers = new ConcurrentHashSet<Invoker<?>>();
+    /** TODO SoftReference
+     * 在我看来，他是一个客户端 invoker的集合
+     * */
+    protected final Set<Invoker<?>> invokers = new ConcurrentHashSet<>();
 
     protected static String serviceKey(URL url) {
         int port = url.getParameter(Constants.BIND_PORT_KEY, url.getPort());
@@ -71,6 +75,7 @@ public abstract class AbstractProtocol implements Protocol {
 
     @Override
     public void destroy() {
+        // 销毁所有invoker
         for (Invoker<?> invoker : invokers) {
             if (invoker != null) {
                 invokers.remove(invoker);
@@ -84,9 +89,9 @@ public abstract class AbstractProtocol implements Protocol {
                 }
             }
         }
-        for (String key : new ArrayList<String>(exporterMap.keySet())) {
+        for (String key : new ArrayList<>(exporterMap.keySet())) {
             Exporter<?> exporter = exporterMap.remove(key);
-            if (exporter != null) {
+                if (exporter != null) {
                 try {
                     if (logger.isInfoEnabled()) {
                         logger.info("Unexport service: " + exporter.getInvoker().getUrl());

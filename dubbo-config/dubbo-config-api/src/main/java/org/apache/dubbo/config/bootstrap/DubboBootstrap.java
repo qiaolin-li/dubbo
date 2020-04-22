@@ -619,7 +619,8 @@ public class DubboBootstrap extends GenericEventListener {
                     cc.setUsername(registryConfig.getUsername());
                     cc.setPassword(registryConfig.getPassword());
                     // 2020年3月12日 增加超时时间
-                    cc.setTimeout(Long.valueOf(registryConfig.getTimeout()));
+                    Integer timeout = registryConfig.getTimeout();
+                    cc.setTimeout(Long.valueOf(timeout == null ? 0 :timeout));
                     cc.setHighestPriority(false);
                     configManager.addConfigCenter(cc);
                 });

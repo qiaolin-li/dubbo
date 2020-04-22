@@ -52,10 +52,19 @@ import static org.apache.dubbo.common.constants.CommonConstants.TIMEOUT_KEY;
 public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZookeeperClient.CuratorWatcherImpl, CuratorZookeeperClient.CuratorWatcherImpl> {
 
     protected static final Logger logger = LoggerFactory.getLogger(CuratorZookeeperClient.class);
+
+    /** zk 的session过期时间 */
     private static final String ZK_SESSION_EXPIRE_KEY = "zk.session.expire";
 
+    /** UTF-8 字符集 */
     static final Charset CHARSET = Charset.forName("UTF-8");
+
+    /** 真正的zk客户端  curator的 */
     private final CuratorFramework client;
+
+    /**
+     * TODO 这是啥？待定
+     **/
     private Map<String, TreeCache> treeCacheMap = new ConcurrentHashMap<>();
 
     public CuratorZookeeperClient(URL url) {
@@ -63,18 +72,28 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
         try {
             int timeout = url.getParameter(TIMEOUT_KEY, DEFAULT_CONNECTION_TIMEOUT_MS);
             int sessionExpireMs = url.getParameter(ZK_SESSION_EXPIRE_KEY, DEFAULT_SESSION_TIMEOUT_MS);
+
+            // curator客服端构建器
             CuratorFrameworkFactory.Builder builder = CuratorFrameworkFactory.builder()
                     .connectString(url.getBackupAddress())
                     .retryPolicy(new RetryNTimes(1, 1000))
                     .connectionTimeoutMs(timeout)
                     .sessionTimeoutMs(sessionExpireMs);
             String authority = url.getAuthority();
+
+            // 是否有认证
             if (authority != null && authority.length() > 0) {
                 builder = builder.authorization("digest", authority.getBytes());
             }
             client = builder.build();
+
+            // 给curator 客户端设置状态监听器
             client.getConnectionStateListenable().addListener(new CuratorConnectionStateListener(url));
+
+            // TODO 启动啥
             client.start();
+
+            // client阻塞到连接完成
             boolean connected = client.blockUntilConnected(timeout, TimeUnit.MILLISECONDS);
             if (!connected) {
                 throw new IllegalStateException("zookeeper not connected");
@@ -104,6 +123,8 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
                     ", this duplication might be caused by a delete delay from the zk server, which means the old expired session" +
                     " may still holds this ZNode and the server just hasn't got time to do the deletion. In this case, " +
                     "we can just try to delete and create again.", e);
+
+            // 创建零时节点失败，如果是节点存在异常，那么先删除
             deletePath(path);
             createEphemeral(path);
         } catch (Exception e) {
@@ -113,11 +134,13 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
 
     @Override
     protected void createPersistent(String path, String data) {
+        // 转换成字节
         byte[] dataBytes = data.getBytes(CHARSET);
         try {
             client.create().forPath(path, dataBytes);
         } catch (NodeExistsException e) {
             try {
+                // 再试一次
                 client.setData().forPath(path, dataBytes);
             } catch (Exception e1) {
                 throw new IllegalStateException(e.getMessage(), e1);
@@ -254,14 +277,25 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
 
     @Override
     public void removeTargetChildListener(String path, CuratorWatcherImpl listener) {
+        // 取消监控
         listener.unwatch();
     }
 
+    /**
+     *  curator 监控器。
+     *  当curator发生对应事件时，转发给我们自己的监视器
+     */
     static class CuratorWatcherImpl implements CuratorWatcher, TreeCacheListener {
 
         private CuratorFramework client;
+
+        //  节点子节点变动监控器
         private volatile ChildListener childListener;
+
+        // 节点数据监控器
         private volatile DataListener dataListener;
+
+        // 需要监视的节点
         private String path;
 
         public CuratorWatcherImpl(CuratorFramework client, ChildListener listener, String path) {
@@ -277,6 +311,9 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
         protected CuratorWatcherImpl() {
         }
 
+        /**
+         *  取消监控，可能是因为curator没有取消监控操作，才会将自己的监听器置空，来实现取消操作吗？
+         */
         public void unwatch() {
             this.childListener = null;
         }
@@ -285,10 +322,12 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
         public void process(WatchedEvent event) throws Exception {
             // if client connect or disconnect to server, zookeeper will queue
             // watched event(Watcher.Event.EventType.None, .., path = null).
+            // TODO 如果client连接或者是断开连接，事件则是None , 是这样的吗？
             if (event.getType() == Watcher.Event.EventType.None) {
                 return;
             }
 
+            // 如果自己的监控器不为空，那么去通知自己的监控器
             if (childListener != null) {
                 childListener.childChanged(path, client.getChildren().usingWatcher(this).forPath(path));
             }
@@ -297,47 +336,56 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
         @Override
         public void childEvent(CuratorFramework client, TreeCacheEvent event) throws Exception {
             if (dataListener != null) {
-                if (logger.isDebugEnabled()) {
-                    logger.debug("listen the zookeeper changed. The changed data:" + event.getData());
-                }
-                TreeCacheEvent.Type type = event.getType();
-                EventType eventType = null;
-                String content = null;
-                String path = null;
-                switch (type) {
-                    case NODE_ADDED:
-                        eventType = EventType.NodeCreated;
-                        path = event.getData().getPath();
-                        content = event.getData().getData() == null ? "" : new String(event.getData().getData(), CHARSET);
-                        break;
-                    case NODE_UPDATED:
-                        eventType = EventType.NodeDataChanged;
-                        path = event.getData().getPath();
-                        content = event.getData().getData() == null ? "" : new String(event.getData().getData(), CHARSET);
-                        break;
-                    case NODE_REMOVED:
-                        path = event.getData().getPath();
-                        eventType = EventType.NodeDeleted;
-                        break;
-                    case INITIALIZED:
-                        eventType = EventType.INITIALIZED;
-                        break;
-                    case CONNECTION_LOST:
-                        eventType = EventType.CONNECTION_LOST;
-                        break;
-                    case CONNECTION_RECONNECTED:
-                        eventType = EventType.CONNECTION_RECONNECTED;
-                        break;
-                    case CONNECTION_SUSPENDED:
-                        eventType = EventType.CONNECTION_SUSPENDED;
-                        break;
-
-                }
-                dataListener.dataChanged(path, content, eventType);
+                return;
             }
+
+            if (logger.isDebugEnabled()) {
+                logger.debug("listen the zookeeper changed. The changed data:" + event.getData());
+            }
+            TreeCacheEvent.Type type = event.getType();
+            EventType eventType = null;
+            String content = null;
+            String path = null;
+            switch (type) {
+                case NODE_ADDED:
+                    eventType = EventType.NodeCreated;
+                    path = event.getData().getPath();
+                    content = event.getData().getData() == null ? "" : new String(event.getData().getData(), CHARSET);
+                    break;
+                case NODE_UPDATED:
+                    eventType = EventType.NodeDataChanged;
+                    path = event.getData().getPath();
+                    content = event.getData().getData() == null ? "" : new String(event.getData().getData(), CHARSET);
+                    break;
+                case NODE_REMOVED:
+                    path = event.getData().getPath();
+                    eventType = EventType.NodeDeleted;
+                    break;
+                case INITIALIZED:
+                    eventType = EventType.INITIALIZED;
+                    break;
+                case CONNECTION_LOST:
+                    eventType = EventType.CONNECTION_LOST;
+                    break;
+                case CONNECTION_RECONNECTED:
+                    eventType = EventType.CONNECTION_RECONNECTED;
+                    break;
+                case CONNECTION_SUSPENDED:
+                    eventType = EventType.CONNECTION_SUSPENDED;
+                    break;
+
+            }
+
+            // 通知数据变动监听器
+            dataListener.dataChanged(path, content, eventType);
+
         }
     }
 
+    /**
+     *  curator 连接状态监听器
+     *  主要是发生状态改变时调用我们自定义的状态监听器
+     */
     private class CuratorConnectionStateListener implements ConnectionStateListener {
         private final long UNKNOWN_SESSION_ID = -1L;
 
@@ -360,6 +408,7 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
                 logger.warn("Curator client state changed, but failed to get the related zk session instance.");
             }
 
+            // 处理不同的状态，并转换成对应的值通知我们自定义的监听器，并且打印警告日志
             if (state == ConnectionState.LOST) {
                 logger.warn("Curator zookeeper session " + Long.toHexString(lastSessionId) + " expired.");
                 CuratorZookeeperClient.this.stateChanged(StateListener.SESSION_LOST);

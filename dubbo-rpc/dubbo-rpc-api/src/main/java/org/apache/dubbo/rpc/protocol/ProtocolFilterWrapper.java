@@ -37,6 +37,7 @@ import static org.apache.dubbo.common.constants.CommonConstants.SERVICE_FILTER_K
 
 /**
  * ListenerProtocol
+ * 他主要将 invoker弄成一个链，Filter,支持可扩展
  */
 public class ProtocolFilterWrapper implements Protocol {
 
@@ -49,8 +50,16 @@ public class ProtocolFilterWrapper implements Protocol {
         this.protocol = protocol;
     }
 
+    /**
+     *  构建invoker执行链
+     * @param invoker 真正调用服务的invoker
+     * @param key url中需要需要自定义的扩展名称
+     * @param group filter的组，分Consumer/Provider
+     * @param <T>
+     * @return
+     */
     private static <T> Invoker<T> buildInvokerChain(final Invoker<T> invoker, String key, String group) {
-        // 将invoke放到最后一个，即链后的最后一个节点
+        // 将真正调用服务的invoke放到最后一个，即链后的最后一个节点
         Invoker<T> last = invoker;
 
         // 获取所有的filter
@@ -149,20 +158,27 @@ public class ProtocolFilterWrapper implements Protocol {
 
     @Override
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
-        // 是否是注册的url，也可以说是远程暴露服务
+
+        // 如果是registry开头，那么往下走，因为自己是个包装类,还不是在走真正的暴露流程
         if (UrlUtils.isRegistry(invoker.getUrl())) {
             return protocol.export(invoker);
         }
 
-        // 本地暴露服务，创建filter链 TODO 那么远程的没有Filter
+        // 如果不是registry，那么他可能是Dubbo/Injvm/... 即是真正暴露服务的protocol
+        // 那么就需要创建下filter链，这个链式服务端的链哈
         return protocol.export(buildInvokerChain(invoker, SERVICE_FILTER_KEY, CommonConstants.PROVIDER));
     }
 
     @Override
     public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
+
+        // 注册协议直接往下走
         if (UrlUtils.isRegistry(url)) {
             return protocol.refer(type, url);
         }
+
+
+        // 构建过滤器链，这个是消费者端的链哈
         return buildInvokerChain(protocol.refer(type, url), REFERENCE_FILTER_KEY, CommonConstants.CONSUMER);
     }
 

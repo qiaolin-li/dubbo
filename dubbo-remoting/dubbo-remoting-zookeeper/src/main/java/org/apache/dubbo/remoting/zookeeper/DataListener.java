@@ -17,9 +17,16 @@
 package org.apache.dubbo.remoting.zookeeper;
 
 /**
- * 2019-02-26
+ * 监听节点数据的改变
+ * 当被监听的节点数据发生改变时调用
  */
 public interface DataListener {
 
+    /**
+     *  数据发生改变时
+     * @param path 改变数据节点的数据
+     * @param value 改变后的值 TODO
+     * @param eventType TODO 事件类型？不懂
+     */
     void dataChanged(String path, Object value, EventType eventType);
 }

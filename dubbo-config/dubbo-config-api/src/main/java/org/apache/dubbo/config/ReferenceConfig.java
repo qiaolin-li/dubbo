@@ -22,11 +22,7 @@ import org.apache.dubbo.common.bytecode.Wrapper;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
-import org.apache.dubbo.common.utils.CollectionUtils;
-import org.apache.dubbo.common.utils.ConfigUtils;
-import org.apache.dubbo.common.utils.NetUtils;
-import org.apache.dubbo.common.utils.StringUtils;
-import org.apache.dubbo.common.utils.UrlUtils;
+import org.apache.dubbo.common.utils.*;
 import org.apache.dubbo.config.annotation.Reference;
 import org.apache.dubbo.config.bootstrap.DubboBootstrap;
 import org.apache.dubbo.config.event.ReferenceConfigDestroyedEvent;
@@ -143,6 +139,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         super(reference);
     }
 
+    @Override
     public synchronized T get() {
         if (destroyed) {
             throw new IllegalStateException("The invoker of ReferenceConfig(" + url + ") has already destroyed!");
@@ -288,40 +285,69 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
 
     @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
     private T createProxy(Map<String, String> map) {
+
+        // 是否是本地引用
         if (shouldJvmRefer(map)) {
+
+            // 创建一个本地引用的url  injvm://127.0.0.1:0/interfaceClassName?xxx=xx
             URL url = new URL(LOCAL_PROTOCOL, LOCALHOST_VALUE, 0, interfaceClass.getName()).addParameters(map);
+
+            // 这里的调用的protocol为 InJvmProtocol
             invoker = REF_PROTOCOL.refer(interfaceClass, url);
             if (logger.isInfoEnabled()) {
                 logger.info("Using injvm service " + interfaceClass.getName());
             }
         } else {
+
+            // 以下就是远程引用
             urls.clear();
-            if (url != null && url.length() > 0) { // user specified URL, could be peer-to-peer address, or register center's address.
+
+            // user specified URL, could be peer-to-peer address, or register center's address.
+            // 用户指定的URL，可能是点对点的地址，也可能是注册中心的地址
+            if (url != null && url.length() > 0) {
+
+                // 以;分隔url,可能会有多个地址
                 String[] us = SEMICOLON_SPLIT_PATTERN.split(url);
-                if (us != null && us.length > 0) {
+                if (ArrayUtils.isNotEmpty(us)) {
                     for (String u : us) {
                         URL url = URL.valueOf(u);
+                        // path为空，设置为接口名称
                         if (StringUtils.isEmpty(url.getPath())) {
                             url = url.setPath(interfaceName);
                         }
+
+                        // 如url是一个注册协议，那么将map参数编码并增加到url中
+                        // 因为如果是注册协议的话，会先调用注册协议的Protocol，然后再调用具体的协议的protocol
                         if (UrlUtils.isRegistry(url)) {
                             urls.add(url.addParameterAndEncoded(REFER_KEY, StringUtils.toQueryString(map)));
                         } else {
+
+                            // 如果不是注册协议，那么合并参数
                             urls.add(ClusterUtils.mergeUrl(url, map));
                         }
                     }
                 }
-            } else { // assemble URL from register center's configuration
+            } else {
+                // assemble URL from register center's configuration
                 // if protocols not injvm checkRegistry
+                // 当前的协议不能是本地 inJvm
                 if (!LOCAL_PROTOCOL.equalsIgnoreCase(getProtocol())) {
+
+                    // 准备好注册中心配置
                     checkRegistry();
+
+                    // 加载注册中心URL
                     List<URL> us = ConfigValidationUtils.loadRegistries(this, false);
                     if (CollectionUtils.isNotEmpty(us)) {
                         for (URL u : us) {
+
+                            // 加载监控地址
                             URL monitorUrl = ConfigValidationUtils.loadMonitor(this, u);
                             if (monitorUrl != null) {
                                 map.put(MONITOR_KEY, URL.encode(monitorUrl.toFullString()));
                             }
+
+                            // 将refer编码到url中
                             urls.add(u.addParameterAndEncoded(REFER_KEY, StringUtils.toQueryString(map)));
                         }
                     }
@@ -331,23 +357,34 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                 }
             }
 
+            // 单个地址，可能是注册中心地址，也可能是直连的地址
             if (urls.size() == 1) {
+                // 直接调用
                 invoker = REF_PROTOCOL.refer(interfaceClass, urls.get(0));
             } else {
-                List<Invoker<?>> invokers = new ArrayList<Invoker<?>>();
+
+                // 多个地址可能有多个invoker,等下需要合并成一个
+                List<Invoker<?>> invokers = new ArrayList<>();
                 URL registryURL = null;
                 for (URL url : urls) {
+                    // 逐个调用每个url,获得一个invoker
                     invokers.add(REF_PROTOCOL.refer(interfaceClass, url));
                     if (UrlUtils.isRegistry(url)) {
-                        registryURL = url; // use last registry url
+                        // use last registry url
+                        // 最后一个注册的地址
+                        registryURL = url;
                     }
                 }
-                if (registryURL != null) { // registry url is available
+                // registry url is available
+                if (registryURL != null) {
                     // for multi-subscription scenario, use 'zone-aware' policy by default
+                    // 对于多个订阅地址，采用`区域感知`策略
                     URL u = registryURL.addParameterIfAbsent(CLUSTER_KEY, ZoneAwareCluster.NAME);
                     // The invoker wrap relation would be like: ZoneAwareClusterInvoker(StaticDirectory) -> FailoverClusterInvoker(RegistryDirectory, routing happens here) -> Invoker
                     invoker = CLUSTER.join(new StaticDirectory(u, invokers));
-                } else { // not a registry url, must be direct invoke.
+                } else {
+                    // not a registry url, must be direct invoke.
+                    // 没有一个注册url,应该直接调用
                     invoker = CLUSTER.join(new StaticDirectory(invokers));
                 }
             }
@@ -378,7 +415,9 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             URL consumerURL = new URL(CONSUMER_PROTOCOL, map.remove(REGISTER_IP_KEY), 0, map.get(INTERFACE_KEY), map);
             metadataService.publishServiceDefinition(consumerURL);
         }
+
         // create service proxy
+        // 创建代理，让客户端无感调用
         return (T) PROXY_FACTORY.getProxy(invoker);
     }
 
@@ -446,7 +485,9 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         URL tmpUrl = new URL("temp", "localhost", 0, map);
         boolean isJvmRefer;
         if (isInjvm() == null) {
+
             // if a url is specified, don't do local reference
+            // TODO 如果指定了url,那么就不是本地引用，只要是url，那么这个url就可能是直连或者注册中心哈？
             if (url != null && url.length() > 0) {
                 isJvmRefer = false;
             } else {

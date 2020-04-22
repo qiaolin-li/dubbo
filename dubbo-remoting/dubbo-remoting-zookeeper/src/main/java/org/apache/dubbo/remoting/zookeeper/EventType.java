@@ -19,8 +19,10 @@ package org.apache.dubbo.remoting.zookeeper;
 import org.apache.zookeeper.Watcher;
 
 /**
- * 2019-02-26
+ * 事件类型
+ * TODO 不太懂这个事件类型，后面看了zookeeper之后再来看看
  */
+
 public enum EventType {
     None(-1),
     NodeCreated(1),

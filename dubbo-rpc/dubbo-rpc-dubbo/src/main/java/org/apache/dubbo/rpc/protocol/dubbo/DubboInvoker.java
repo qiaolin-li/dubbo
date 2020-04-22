@@ -54,12 +54,19 @@ public class DubboInvoker<T> extends AbstractInvoker<T> {
 
     private final ExchangeClient[] clients;
 
+
     private final AtomicPositiveInteger index = new AtomicPositiveInteger();
 
+    /**
+     * 提供者的版本
+     * */
     private final String version;
 
     private final ReentrantLock destroyLock = new ReentrantLock();
 
+    /**
+     * 所有的执行器
+     * */
     private final Set<Invoker<?>> invokers;
 
     public DubboInvoker(Class<T> serviceType, URL url, ExchangeClient[] clients) {
@@ -67,6 +74,7 @@ public class DubboInvoker<T> extends AbstractInvoker<T> {
     }
 
     public DubboInvoker(Class<T> serviceType, URL url, ExchangeClient[] clients, Set<Invoker<?>> invokers) {
+
         super(serviceType, url, new String[]{INTERFACE_KEY, GROUP_KEY, TOKEN_KEY, TIMEOUT_KEY});
         this.clients = clients;
         // get version.

@@ -156,7 +156,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     /**
      * The url of the reference service
      */
-    protected final List<URL> urls = new ArrayList<URL>();
+    protected final List<URL> urls = new ArrayList<>();
 
     public List<URL> getExportedUrls() {
         return urls;
@@ -188,6 +188,9 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
         }
     }
 
+    /**
+     * 增加一些运行时参数，例如dubbo的协议版本，release的版本，时间戳，程序pid
+     */
     public static void appendRuntimeParameters(Map<String, String> map) {
         map.put(DUBBO_VERSION_KEY, Version.getProtocolVersion());
         map.put(RELEASE_KEY, Version.getVersion());

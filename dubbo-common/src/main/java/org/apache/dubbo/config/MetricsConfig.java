@@ -22,6 +22,10 @@ import org.apache.dubbo.config.support.Parameter;
 import static org.apache.dubbo.common.constants.CommonConstants.METRICS_PORT;
 import static org.apache.dubbo.common.constants.CommonConstants.METRICS_PROTOCOL;
 
+/**
+ *  TODO 这是配置虾米的？》
+ */
+
 public class MetricsConfig extends AbstractConfig {
 
     private static final long serialVersionUID = -9089919311611546383L;

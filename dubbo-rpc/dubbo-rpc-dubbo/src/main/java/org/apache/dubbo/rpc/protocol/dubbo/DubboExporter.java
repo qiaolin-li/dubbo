@@ -27,8 +27,10 @@ import java.util.Map;
  */
 public class DubboExporter<T> extends AbstractExporter<T> {
 
+    /** 服务key */
     private final String key;
 
+    /** 暴露服务的map */
     private final Map<String, Exporter<?>> exporterMap;
 
     public DubboExporter(Invoker<T> invoker, String key, Map<String, Exporter<?>> exporterMap) {

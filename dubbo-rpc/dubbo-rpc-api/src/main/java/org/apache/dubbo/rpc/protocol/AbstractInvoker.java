@@ -51,14 +51,29 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
+    /**
+     *  提供者类型
+     */
     private final Class<T> type;
 
+    /**
+     * 引用Url
+     * */
     private final URL url;
 
+    /**
+     * 消费者提供的属性
+     **/
     private final Map<String, String> attachment;
 
+    /**
+     *  是否可用
+     */
     private volatile boolean available = true;
 
+    /**
+     *  是否已经销毁
+     */
     private AtomicBoolean destroyed = new AtomicBoolean(false);
 
     public AbstractInvoker(Class<T> type, URL url) {
@@ -119,6 +134,8 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
         if (!destroyed.compareAndSet(false, true)) {
             return;
         }
+
+        // 设置成不可用
         setAvailable(false);
     }
 
@@ -133,16 +150,21 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
 
     @Override
     public Result invoke(Invocation inv) throws RpcException {
-        // if invoker is destroyed due to address refresh from registry, let's allow the current invoke to proceed
+        // if invoker is destroyed due to address refresh from registry,
+        // let's allow the current invoke to proceed
         if (destroyed.get()) {
             logger.warn("Invoker for service " + this + " on consumer " + NetUtils.getLocalHost() + " is destroyed, "
                     + ", dubbo version is " + Version.getVersion() + ", this invoker should not be used any longer");
         }
         RpcInvocation invocation = (RpcInvocation) inv;
+        // 设置invoker为当前对象
         invocation.setInvoker(this);
+
         if (CollectionUtils.isNotEmptyMap(attachment)) {
+            // invocation 附加属性
             invocation.addAttachmentsIfAbsent(attachment);
         }
+
         Map<String, String> contextAttachments = RpcContext.getContext().getAttachments();
         if (CollectionUtils.isNotEmptyMap(contextAttachments)) {
             /**
@@ -151,9 +173,11 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
              * by the built-in retry mechanism of the Dubbo. The attachment to update RpcContext will no longer work, which is
              * a mistake in most cases (for example, through Filter to RpcContext output traceId and spanId and other information).
              */
+            // 将上下文中的附加属性过来
             invocation.addAttachments(contextAttachments);
         }
 
+        // 设置执行模型
         invocation.setInvokeMode(RpcUtils.getInvokeMode(url, invocation));
         RpcUtils.attachInvocationIdIfAsync(getUrl(), invocation);
 

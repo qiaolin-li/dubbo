@@ -34,6 +34,7 @@ import java.util.concurrent.CompletionException;
 
 /**
  * InvokerWrapper
+ * 抽象的代理Invoker
  */
 public abstract class AbstractProxyInvoker<T> implements Invoker<T> {
     Logger logger = LoggerFactory.getLogger(AbstractProxyInvoker.class);

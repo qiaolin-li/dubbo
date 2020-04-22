@@ -16,18 +16,31 @@
  */
 package org.apache.dubbo.remoting.zookeeper;
 
+/**
+ *  zookeeper链接 状态监听器
+ */
+
 public interface StateListener {
 
+    /** session丢失？ */
     int SESSION_LOST = 0;
 
-    int CONNECTED = 1;
-
+    /** 重新接连完成 */
     int RECONNECTED = 2;
 
-    int SUSPENDED = 3;
+    /** 已链接 */
+    int CONNECTED = 1;
 
+    /** TODO 新的Session创建完成？ */
     int NEW_SESSION_CREATED = 4;
 
+    /** TODO 暂停？ */
+    int SUSPENDED = 3;
+
+    /**
+     *  链接状态发生改变时调用
+     * @param connected 链接状态
+     */
     void stateChanged(int connected);
 
 }

@@ -399,20 +399,31 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
     }
 
     private void doExportUrlsFor1Protocol(ProtocolConfig protocolConfig, List<URL> registryURLs) {
+
+        // TODO 协议到底有哪些呢？
         String name = protocolConfig.getName();
         if (StringUtils.isEmpty(name)) {
+
             name = DUBBO;
         }
 
+        // 存放提供者暴露服务的参数
         Map<String, String> map = new HashMap<>();
+        // side = provider 标记这是一个提供者
         map.put(SIDE_KEY, PROVIDER_SIDE);
 
+        // 增加一些运行时信息
         ServiceConfig.appendRuntimeParameters(map);
         AbstractConfig.appendParameters(map, getMetrics());
+
+        // 增加应用信息
         AbstractConfig.appendParameters(map, getApplication());
+
+        // 增加模块属性
         AbstractConfig.appendParameters(map, getModule());
         // remove 'default.' prefix for configs from ProviderConfig
         // appendParameters(map, provider, Constants.DEFAULT_KEY);
+
         AbstractConfig.appendParameters(map, provider);
         AbstractConfig.appendParameters(map, protocolConfig);
         AbstractConfig.appendParameters(map, this);
@@ -465,15 +476,19 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         // export service
         String host = findConfigedHosts(protocolConfig, registryURLs, map);
         Integer port = findConfigedPorts(protocolConfig, name, map);
+
+        // 组装URL
         URL url = new URL(name, host, port, getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), map);
 
         // You can customize Configurator to append extra parameters
+        // 可以通过 ConfiguratorFactory 来扩展参数
         if (ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
                 .hasExtension(url.getProtocol())) {
             url = ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
                     .getExtension(url.getProtocol()).getConfigurator(url).configure(url);
         }
 
+        // 导出的范围
         String scope = url.getParameter(SCOPE_KEY);
 
         // don't export when none is configured
@@ -489,16 +504,25 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             if (!SCOPE_LOCAL.equalsIgnoreCase(scope)) {
                 if (CollectionUtils.isNotEmpty(registryURLs)) {
                     for (URL registryURL : registryURLs) {
-                        //if protocol is only injvm ,not register
+
+                        // 如果协议是 injvm 不注册
                         if (LOCAL_PROTOCOL.equalsIgnoreCase(url.getProtocol())) {
                             continue;
                         }
+
+                        // 如果url参数中没有dynamic参数，则将registryUrl中dynamic参数添加到url
                         url = url.addParameterIfAbsent(DYNAMIC_KEY, registryURL.getParameter(DYNAMIC_KEY));
+
+                        // 加载监控配置，TODO 日后看到监控在看
                         URL monitorUrl = ConfigValidationUtils.loadMonitor(this, registryURL);
+
+                        // 监控url不为空，将它编码到url中
                         if (monitorUrl != null) {
                             url = url.addParameterAndEncoded(MONITOR_KEY, monitorUrl.toFullString());
                         }
                         if (logger.isInfoEnabled()) {
+
+                            // 如果url带有注册中心，打印对应的信息 TODO 为了看接口注册到哪里了吧
                             if (url.getParameter(REGISTER_KEY, true)) {
                                 logger.info("Register dubbo service " + interfaceClass.getName() + " url " + url + " to registry " + registryURL);
                             } else {
@@ -507,21 +531,33 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                         }
 
                         // For providers, this is used to enable custom proxy to generate invoker
+                        // 如果自己的代理不为空，则将自己的代理参数设置给注册中心， TODO 这里的代理是个类名？还是个啥东西
                         String proxy = url.getParameter(PROXY_KEY);
                         if (StringUtils.isNotEmpty(proxy)) {
                             registryURL = registryURL.addParameter(PROXY_KEY, proxy);
                         }
 
+
+                        // 1、将要暴露服务的url编码到registryUrl的参数中
+                        // 为了先注册到注册中心，然后再暴露服务？？TODO 是的不
+                        // 现在我理解invoke是一个和接口调用打交道的最后一层
                         Invoker<?> invoker = PROXY_FACTORY.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(EXPORT_KEY, url.toFullString()));
+
+                        // invoker包装器，额外带了个暴露服务的元数据
                         DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
 
+                        // 这里protocol其实是 RegistryProtocol
                         Exporter<?> exporter = protocol.export(wrapperInvoker);
+
+                        // 暴露器缓存
                         exporters.add(exporter);
                     }
                 } else {
                     if (logger.isInfoEnabled()) {
                         logger.info("Export dubbo service " + interfaceClass.getName() + " to url " + url);
                     }
+
+                    // 没有注册中心，直接暴露Dubbo服务，因为可能服务是直连模式
                     Invoker<?> invoker = PROXY_FACTORY.getInvoker(ref, (Class) interfaceClass, url);
                     DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
 
@@ -644,6 +680,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                                      Map<String, String> map) {
         boolean anyhost = false;
 
+        // 从系统中获取配置
         String hostToBind = getValueFromConfig(protocolConfig, DUBBO_IP_TO_BIND);
         if (hostToBind != null && hostToBind.length() > 0 && isInvalidLocalHost(hostToBind)) {
             throw new IllegalArgumentException("Specified invalid bind ip from property:" + DUBBO_IP_TO_BIND + ", value:" + hostToBind);
@@ -770,8 +807,15 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         return port;
     }
 
+    /**
+     *  从系统中获取值
+     * @param protocolConfig
+     * @param key
+     * @return
+     */
     private String getValueFromConfig(ProtocolConfig protocolConfig, String key) {
         String protocolPrefix = protocolConfig.getName().toUpperCase() + "_";
+
         String port = ConfigUtils.getSystemProperty(protocolPrefix + key);
         if (StringUtils.isEmpty(port)) {
             port = ConfigUtils.getSystemProperty(key);

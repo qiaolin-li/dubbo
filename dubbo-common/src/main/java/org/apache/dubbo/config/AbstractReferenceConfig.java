@@ -135,7 +135,8 @@ public abstract class AbstractReferenceConfig extends AbstractInterfaceConfig {
     /**
      * @return
      * @deprecated instead, use the parameter <b>scope</> to judge if it's in jvm, scope=local
-     */
+     * 是否是本地引用，这个属性已经过时，推荐使用 scope=local
+     **/
     @Deprecated
     public Boolean isInjvm() {
         return injvm;
