@@ -20,21 +20,43 @@ package org.apache.dubbo.registry;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.SPI;
 
+/**
+ *  注册中心监听器
+ *  <p>
+ *  监听注册、解除注册、订阅、解除订阅各种事件
+ */
+
 @SPI
 public interface RegistryServiceListener {
+
+    /**
+     * 注册事件
+     * @param url 发起注册的url
+     */
     default void onRegister(URL url) {
 
     }
 
-
+    /**
+     * 解除注册事件
+     * @param url 发起解除注册事件的url
+     */
     default void onUnregister(URL url) {
 
     }
 
+    /**
+     *  订阅服务事件
+     * @param url 发起订阅服务的url
+     */
     default void onSubscribe(URL url) {
 
     }
 
+    /**
+     *  解除订阅服务的事件
+     * @param url 解除订阅服务的url
+     */
     default void onUnsubscribe(URL url) {
 
     }

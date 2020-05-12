@@ -24,6 +24,12 @@ import org.apache.dubbo.common.utils.CollectionUtils;
 
 import java.util.List;
 
+/**
+ *  注册中心包装类
+ *  <p>
+ *  当发生注册、解除注册、订阅、解决订阅时去调用监听器
+ */
+
 public class ListenerRegistryWrapper implements Registry {
     private static final Logger logger = LoggerFactory.getLogger(ListenerRegistryWrapper.class);
 

@@ -335,7 +335,7 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
 
         @Override
         public void childEvent(CuratorFramework client, TreeCacheEvent event) throws Exception {
-            if (dataListener != null) {
+            if (dataListener == null) {
                 return;
             }
 

@@ -1437,6 +1437,10 @@ class URL implements Serializable {
         return ServiceDescriptor.buildServiceKey(path, group, version);
     }
 
+    /**
+     * 包含用户密码、path，不包含参数
+     * @return
+     */
     public String toServiceStringWithoutResolving() {
         return buildString(true, false, false, true);
     }

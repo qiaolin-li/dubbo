@@ -40,7 +40,7 @@ public class Application {
         @Bean
         public RegistryConfig registryConfig() {
             RegistryConfig registryConfig = new RegistryConfig();
-            registryConfig.setAddress("zookeeper://192.168.1.131:2181");
+            registryConfig.setAddress("zookeeper://qiaolin.vip:8888");
             registryConfig.setTimeout(10 * 1000);
             return registryConfig;
         }

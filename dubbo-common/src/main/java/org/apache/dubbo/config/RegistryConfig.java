@@ -70,6 +70,9 @@ public class RegistryConfig extends AbstractConfig {
 
     private String server;
 
+    /**
+     *  使用的客户端类型， zookeeper ： curator/zkclient
+     */
     private String client;
 
     /**
@@ -85,6 +88,7 @@ public class RegistryConfig extends AbstractConfig {
 
     /**
      * 服务注册分组，跨组的服务不会相互影响，也无法相互调用，适用于环境隔离。
+     * zookeeper的根节点  /{group} ，默认 /dubbo
      */
     private String group;
 

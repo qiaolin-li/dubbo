@@ -22,7 +22,7 @@ import org.apache.dubbo.common.extension.SPI;
 
 /**
  * RegistryFactory. (SPI, Singleton, ThreadSafe)
- *
+ * 注册中心类工厂
  * @see org.apache.dubbo.registry.support.AbstractRegistryFactory
  */
 @SPI("dubbo")
@@ -30,6 +30,7 @@ public interface RegistryFactory {
 
     /**
      * Connect to the registry
+     * 连接到注册中心
      * <p>
      * Connecting the registry needs to support the contract: <br>
      * 1. When the check=false is set, the connection is not checked, otherwise the exception is thrown when disconnection <br>
@@ -38,6 +39,14 @@ public interface RegistryFactory {
      * 4. Support file=registry.cache local disk file cache.<br>
      * 5. Support the timeout=1000 request timeout setting.<br>
      * 6. Support session=60000 session timeout or expiration settings.<br>
+     *
+     * <p>
+     * 连接到注册中心需要支持以下条件：   <br>
+     * 1.在 check=false时，不会检查这个连接，否则在断开连接时会抛出异常
+     * 2.支持 basic认证
+     * 3.支持 backup=10.20.153.10 这种注册中心集群方式
+     * 4.支持 timeout=1000 请求超时设置
+     * 5.支持 session=60000 会话超时或者过期设置
      *
      * @param url Registry address, is not allowed to be empty
      * @return Registry reference, never return empty value

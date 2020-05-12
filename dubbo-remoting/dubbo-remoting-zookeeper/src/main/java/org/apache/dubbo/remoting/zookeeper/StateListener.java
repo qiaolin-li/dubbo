@@ -25,11 +25,11 @@ public interface StateListener {
     /** session丢失？ */
     int SESSION_LOST = 0;
 
-    /** 重新接连完成 */
-    int RECONNECTED = 2;
-
     /** 已链接 */
     int CONNECTED = 1;
+
+    /** 重新接连完成 */
+    int RECONNECTED = 2;
 
     /** TODO 新的Session创建完成？ */
     int NEW_SESSION_CREATED = 4;
