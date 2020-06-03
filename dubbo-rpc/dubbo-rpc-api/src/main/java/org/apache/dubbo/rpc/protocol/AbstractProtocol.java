@@ -16,7 +16,6 @@
  */
 package org.apache.dubbo.rpc.protocol;
 
-import com.sun.xml.internal.bind.v2.TODO;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
