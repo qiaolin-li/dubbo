@@ -40,6 +40,8 @@ import static org.apache.dubbo.rpc.cluster.Constants.REFER_KEY;
 /**
  * AbstractRegistryFactory. (SPI, Singleton, ThreadSafe)
  * 抽象的注册中心工厂
+ * 1、模板方法体现，定义了基本的框架，先从缓存中取注册中心，取不到再去创建
+ * 2、持有所有的注册中心
  * @see org.apache.dubbo.registry.RegistryFactory
  */
 public abstract class AbstractRegistryFactory implements RegistryFactory {

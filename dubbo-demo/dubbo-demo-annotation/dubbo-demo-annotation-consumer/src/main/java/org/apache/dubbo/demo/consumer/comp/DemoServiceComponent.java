@@ -46,14 +46,4 @@ public class DemoServiceComponent implements DemoService {
         return null;
     }
 
-//    public static void main(String[] args) throws IOException {
-//        URL resource = DemoService.class.getClassLoader().getResource("log4j.properties");
-//        FileInputStream fileInputStream = new FileInputStream(new File(resource.getPath()));
-//        Charset charset = Charset.forName("UTF-8");
-//        byte[] bytes = new byte[fileInputStream.available()];
-//        int read = fileInputStream.read(bytes);
-//        String x = new String(bytes, 0, read, charset);
-//        System.out.println(x);
-//        System.out.println(resource);
-//    }
 }

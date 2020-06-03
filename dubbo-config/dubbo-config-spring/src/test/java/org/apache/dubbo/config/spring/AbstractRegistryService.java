@@ -34,6 +34,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * AbstractRegistryService
+ * 抽象的注册中心服务
+ *
  */
 public abstract class AbstractRegistryService implements RegistryService {
 
@@ -42,19 +44,21 @@ public abstract class AbstractRegistryService implements RegistryService {
 
     // registered services
     // Map<serviceName, Map<url, queryString>>
-    private final ConcurrentMap<String, List<URL>> registered = new ConcurrentHashMap<String, List<URL>>();
+    // 已经注册的服务，Map<服务名, 服务URL> TODO 这里面的URL是所有的URL吗？
+    private final ConcurrentMap<String, List<URL>> registered = new ConcurrentHashMap<>();
 
     // subscribed services
     // Map<serviceName, queryString>
-    private final ConcurrentMap<String, Map<String, String>> subscribed = new ConcurrentHashMap<String, Map<String, String>>();
+    // 订阅的服务 ?
+    private final ConcurrentMap<String, Map<String, String>> subscribed = new ConcurrentHashMap<>();
 
     // notified services
     // Map<serviceName, Map<url, queryString>>
-    private final ConcurrentMap<String, List<URL>> notified = new ConcurrentHashMap<String, List<URL>>();
+    private final ConcurrentMap<String, List<URL>> notified = new ConcurrentHashMap<>();
 
     // notification listeners for the subscribed services
     // Map<serviceName, List<notificationListener>>
-    private final ConcurrentMap<String, List<NotifyListener>> notifyListeners = new ConcurrentHashMap<String, List<NotifyListener>>();
+    private final ConcurrentMap<String, List<NotifyListener>> notifyListeners = new ConcurrentHashMap<>();
 
     @Override
     public void register(URL url) {

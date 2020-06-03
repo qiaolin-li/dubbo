@@ -66,7 +66,7 @@ public interface RegistryService {
      * <p>
      * 取消注册需要支持如下：
      * 1. 如果是持久化数据则 dynamic=false, 找不到数据则抛出 IllegalStateException ,否则忽略
-     * 2.按照全URL匹配的方式取消注册，因为注册的时候我们可以接受url相同但是参数不同的URL
+     * 2. 按照全URL匹配的方式取消注册，因为注册的时候我们可以接受url相同但是参数不同的URL
      *
      * @param url Registration information , is not allowed to be empty, e.g: dubbo://10.20.153.10/org.apache.dubbo.foo.BarService?version=1.0.0&application=kylin
      */

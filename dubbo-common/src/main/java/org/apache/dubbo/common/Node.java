@@ -18,25 +18,25 @@ package org.apache.dubbo.common;
 
 /**
  * Node. (API/SPI, Prototype, ThreadSafe)
+ * 节点
  */
 public interface Node {
 
     /**
-     * get url.
-     *
+     * 获取Url
      * @return url.
      */
     URL getUrl();
 
     /**
-     * is available.
+     * 节点是否可用 TODO 当前节点？
      *
      * @return available.
      */
     boolean isAvailable();
 
     /**
-     * destroy.
+     * TODO 销毁当前节点？
      */
     void destroy();
 

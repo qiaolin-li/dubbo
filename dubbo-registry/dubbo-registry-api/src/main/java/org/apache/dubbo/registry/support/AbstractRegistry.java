@@ -66,38 +66,81 @@ import static org.apache.dubbo.registry.Constants.REGISTRY_FILESAVE_SYNC_KEY;
 
 /**
  * AbstractRegistry. (SPI, Prototype, ThreadSafe)
+ * 抽象的注册中心
  */
 public abstract class AbstractRegistry implements Registry {
 
     // URL address separator, used in file cache, service provider URL separation
+    // URL地址分隔符，使用场景：文件缓存，服务提供者url分割
     private static final char URL_SEPARATOR = ' ';
+
     // URL address separated regular expression for parsing the service provider URL list in the file cache
+    // URL地址分割表达式， 用来解析文件缓存中服务器提供着Url列表
     private static final String URL_SPLIT = "\\s+";
+
     // Max times to retry to save properties to local cache file
+    // 保存配置到本地缓存的最大重试次数
     private static final int MAX_RETRY_TIMES_SAVE_PROPERTIES = 3;
+
     // Log output
     protected final Logger logger = LoggerFactory.getLogger(getClass());
-    // Local disk cache, where the special key value.registries records the list of registry centers, and the others are the list of notified service providers
+
+    // Local disk cache, where the special key value.registries records the list of registry centers,
+    // and the others are the list of notified service providers
+    // 本地磁盘的缓存， TODO 后来再看有啥用
+    // 1、其中特殊的key值 .registries 记录注册中心的列表
+    // 2、其他的的为服务提供者列表
     private final Properties properties = new Properties();
+
     // File cache timing writing
+    // 文件缓存定时写入执行器
     private final ExecutorService registryCacheExecutor = Executors.newFixedThreadPool(1, new NamedThreadFactory("DubboSaveRegistryCache", true));
+
     // Is it synchronized to save the file
+    /// 保存到文件时是否是同步的
     private final boolean syncSaveFile;
+
+    //  最后的数据版本号
     private final AtomicLong lastCacheChanged = new AtomicLong();
+
+    // 保存配置重试的次数
     private final AtomicInteger savePropertiesRetryTimes = new AtomicInteger();
-    private final Set<URL> registered = new ConcurrentHashSet<>();
+
+    // 已注册的url集合，注册的url不仅仅可以是服务提供者，也可能是服务消费者  TODO 什么是已注册的url呢？提供者和消费者？？
+   private final Set<URL> registered = new ConcurrentHashSet<>();
+
+    // 订阅URL的监听器集合
     private final ConcurrentMap<URL, Set<NotifyListener>> subscribed = new ConcurrentHashMap<>();
+
+    // 被通知的URL集合
+    // ConcurrentMap<消费者URL, Map<分类, List<URL>>>
+    // 分类 providers、consumers、routes、configurators TODO 实际无消费者，因为没有人订阅消费者
     private final ConcurrentMap<URL, Map<String, List<URL>>> notified = new ConcurrentHashMap<>();
+
+    // 注册中心url
     private URL registryUrl;
+
     // Local disk cache file
+    // 本地磁盘缓存文件
     private File file;
 
     public AbstractRegistry(URL url) {
+        // 保存注册中心url
         setUrl(url);
+
         // Start file save timer
+        // 启动文件保存定时器
         syncSaveFile = url.getParameter(REGISTRY_FILESAVE_SYNC_KEY, false);
+
+        // 默认的缓存文件地址  %user.home%/.dubbo/dubbo-registry-${application}-${ip-port}.cache
         String defaultFilename = System.getProperty("user.home") + "/.dubbo/dubbo-registry-" + url.getParameter(APPLICATION_KEY) + "-" + url.getAddress().replaceAll(":", "-") + ".cache";
+
+        // 获取缓存文件地址
         String filename = url.getParameter(FILE_KEY, defaultFilename);
+
+        // 创建文件父级目录
+        // 我有一个疑问，为什么只创建父级目录，其实如果是为了恢复缓存中的数据，那么也是恢复上一次写入的缓存啊！
+        // 所以如果没有这个文件就代表没有缓存啊！
         File file = null;
         if (ConfigUtils.isNotEmpty(filename)) {
             file = new File(filename);
@@ -107,10 +150,15 @@ public abstract class AbstractRegistry implements Registry {
                 }
             }
         }
+
+        //保存文件引用
         this.file = file;
+
         // When starting the subscription center,
         // we need to read the local cache file for future Registry fault tolerance processing.
+        // 启动注册中心时，我们需要读取本地缓存文件，以便将来进行注册表容错
         loadProperties();
+
         notify(url.getBackupUrls());
     }
 
@@ -208,10 +256,14 @@ public abstract class AbstractRegistry implements Registry {
     }
 
     private void loadProperties() {
+
+        // 如果文件存在，则去读取
         if (file != null && file.exists()) {
             InputStream in = null;
             try {
                 in = new FileInputStream(file);
+
+                // 将文件的内容读取到 properties中
                 properties.load(in);
                 if (logger.isInfoEnabled()) {
                     logger.info("Load registry cache file " + file + ", data: " + properties);

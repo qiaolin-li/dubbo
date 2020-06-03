@@ -27,6 +27,9 @@ import org.apache.dubbo.remoting.zookeeper.ZookeeperTransporter;
  */
 public class ZookeeperRegistryFactory extends AbstractRegistryFactory {
 
+    /**
+     *  这个zookeeper依赖由 IOC/SPI来注入
+     */
     private ZookeeperTransporter zookeeperTransporter;
 
     /**
