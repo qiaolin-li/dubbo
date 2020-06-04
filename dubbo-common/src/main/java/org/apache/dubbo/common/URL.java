@@ -513,6 +513,11 @@ class URL implements Serializable {
         return address.toString();
     }
 
+    /**
+     * 获取备份URL，参数 backup
+     * 它会将backup的值转成url
+     * @return
+     */
     public List<URL> getBackupUrls() {
         List<URL> urls = new ArrayList<>();
         urls.add(this);
