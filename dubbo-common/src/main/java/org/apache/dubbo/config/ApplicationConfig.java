@@ -280,6 +280,8 @@ public class ApplicationConfig extends AbstractConfig {
 
     public void setCompiler(String compiler) {
         this.compiler = compiler;
+
+        // 给适配编译器设置编译器的类型
         AdaptiveCompiler.setDefaultCompiler(compiler);
     }
 

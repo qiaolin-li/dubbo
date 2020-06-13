@@ -23,10 +23,12 @@ import org.apache.dubbo.common.extension.ExtensionLoader;
 /**
  * AdaptiveCompiler. (SPI, Singleton, ThreadSafe)
  * 编辑器适配类
+ * 根据不同的配置调用不同的编译器，可通过 <dubbo:application compiler="jdk" /> 指定编译器
  */
 @Adaptive
 public class AdaptiveCompiler implements Compiler {
 
+    // 编译器名称， jdk或javassist
     private static volatile String DEFAULT_COMPILER;
 
     public static void setDefaultCompiler(String compiler) {
@@ -36,14 +38,21 @@ public class AdaptiveCompiler implements Compiler {
     @Override
     public Class<?> compile(String code, ClassLoader classLoader) {
         Compiler compiler;
+
+        // 获取Compiler的扩展加载器
         ExtensionLoader<Compiler> loader = ExtensionLoader.getExtensionLoader(Compiler.class);
-        // copy reference
+
+        // 获取编译器的名称
         String name = DEFAULT_COMPILER;
+
+        // 如果指定了编译器，就使用指定的编译器，否则使用默认编译器 javassist
         if (name != null && name.length() > 0) {
             compiler = loader.getExtension(name);
         } else {
             compiler = loader.getDefaultExtension();
         }
+
+        // 使用编译器进行编译源代码
         return compiler.compile(code, classLoader);
     }
 

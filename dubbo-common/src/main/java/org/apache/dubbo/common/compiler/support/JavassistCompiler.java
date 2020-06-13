@@ -25,6 +25,8 @@ import java.util.regex.Pattern;
 
 /**
  * JavassistCompiler. (SPI, Singleton, ThreadSafe)
+ * javassist编译器
+ *
  */
 public class JavassistCompiler extends AbstractCompiler {
 
@@ -40,7 +42,11 @@ public class JavassistCompiler extends AbstractCompiler {
 
     @Override
     public Class<?> doCompile(String name, String source) throws Throwable {
+
+        // CtClass构造者
         CtClassBuilder builder = new CtClassBuilder();
+
+        // 类名
         builder.setClassName(name);
 
         // process imported classes

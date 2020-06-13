@@ -27,6 +27,7 @@ public interface Compiler {
 
     /**
      * Compile java source code.
+     * 编译Java源代码
      *
      * @param code        Java source code
      * @param classLoader classloader

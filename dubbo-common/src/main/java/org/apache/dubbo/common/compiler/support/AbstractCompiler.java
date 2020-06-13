@@ -23,23 +23,36 @@ import java.util.regex.Pattern;
 
 /**
  * Abstract compiler. (SPI, Prototype, ThreadSafe)
+ * 抽象编译器， 防止多次编译
  */
 public abstract class AbstractCompiler implements Compiler {
 
+    /**
+     *  package 匹配正则表达式
+     */
     private static final Pattern PACKAGE_PATTERN = Pattern.compile("package\\s+([$_a-zA-Z][$_a-zA-Z0-9\\.]*);");
 
+    /**
+     *  class 类名匹配正则表达式
+     */
     private static final Pattern CLASS_PATTERN = Pattern.compile("class\\s+([$_a-zA-Z][$_a-zA-Z0-9]*)\\s+");
 
     @Override
     public Class<?> compile(String code, ClassLoader classLoader) {
         code = code.trim();
+
+        // 匹配包
         Matcher matcher = PACKAGE_PATTERN.matcher(code);
         String pkg;
+
+        // 获取包名
         if (matcher.find()) {
             pkg = matcher.group(1);
         } else {
             pkg = "";
         }
+
+        // 获取class名称
         matcher = CLASS_PATTERN.matcher(code);
         String cls;
         if (matcher.find()) {
@@ -47,14 +60,19 @@ public abstract class AbstractCompiler implements Compiler {
         } else {
             throw new IllegalArgumentException("No such class name in " + code);
         }
+
+        // 组成全类名
         String className = pkg != null && pkg.length() > 0 ? pkg + "." + cls : cls;
+
         try {
+            // 尝试加载 class, 如果不出错则证明之前编译过这个类
             return Class.forName(className, true, org.apache.dubbo.common.utils.ClassUtils.getCallerClassLoader(getClass()));
         } catch (ClassNotFoundException e) {
             if (!code.endsWith("}")) {
                 throw new IllegalStateException("The java code not endsWith \"}\", code: \n" + code + "\n");
             }
             try {
+                // 加载Class失败时，去编译源代码
                 return doCompile(className, code);
             } catch (RuntimeException t) {
                 throw t;
@@ -64,6 +82,13 @@ public abstract class AbstractCompiler implements Compiler {
         }
     }
 
+    /**
+     * 编译源代码
+     * @param name 全类名
+     * @param source 待编译的源代码
+     * @return class对象
+     * @throws Throwable
+     */
     protected abstract Class<?> doCompile(String name, String source) throws Throwable;
 
 }
