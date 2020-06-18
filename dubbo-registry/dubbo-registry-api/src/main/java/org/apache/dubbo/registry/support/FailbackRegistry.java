@@ -472,7 +472,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
     }
 
     // ==== Template method ====
-
+    // 模板方法
     public abstract void doRegister(URL url);
 
     public abstract void doUnregister(URL url);

@@ -33,7 +33,7 @@ import java.util.concurrent.CompletableFuture;
 
 @Component("demoServiceComponent")
 public class DemoServiceComponent implements DemoService {
-    @Reference
+    @Reference(check = false)
     private DemoService demoService;
 
     @Override
