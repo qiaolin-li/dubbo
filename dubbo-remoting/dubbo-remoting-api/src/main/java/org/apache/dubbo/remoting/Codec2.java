@@ -22,18 +22,45 @@ import org.apache.dubbo.remoting.buffer.ChannelBuffer;
 
 import java.io.IOException;
 
+/**
+ *  编解码器
+ *  TODO 为什么是2呢？ 2.0？
+ */
+
 @SPI
 public interface Codec2 {
 
+    /**
+     *  编码
+     * @param channel 连接通道
+     * @param buffer  将编码后的字节写入的buffer
+     * @param message 待编码的数据
+     * @throws IOException
+     */
     @Adaptive({Constants.CODEC_KEY})
     void encode(Channel channel, ChannelBuffer buffer, Object message) throws IOException;
 
+    /**
+     *  解码
+     * @param channel 连接通道
+     * @param buffer 待解码的字节
+     * @return 解码完的数据
+     * @throws IOException
+     */
     @Adaptive({Constants.CODEC_KEY})
     Object decode(Channel channel, ChannelBuffer buffer) throws IOException;
 
 
+    /**
+     *  解码解雇
+     */
     enum DecodeResult {
-        NEED_MORE_INPUT, SKIP_SOME_INPUT
+
+        // 需要更多的输入， TODO 解决粘包？？？
+        NEED_MORE_INPUT,
+
+        // 跳过少量的输入 TODO ？？
+        SKIP_SOME_INPUT
     }
 
 }
