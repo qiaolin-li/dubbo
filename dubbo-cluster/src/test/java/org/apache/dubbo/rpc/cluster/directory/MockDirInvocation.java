@@ -77,6 +77,7 @@ public class MockDirInvocation implements Invocation {
 
     }
 
+    @Override
     public Invoker<?> getInvoker() {
         return null;
     }
@@ -96,10 +97,12 @@ public class MockDirInvocation implements Invocation {
         return null;
     }
 
+    @Override
     public String getAttachment(String key) {
         return getAttachments().get(key);
     }
 
+    @Override
     public String getAttachment(String key, String defaultValue) {
         return getAttachments().get(key);
     }

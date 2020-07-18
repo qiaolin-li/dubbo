@@ -68,6 +68,7 @@ public class LegacyInvocation implements Invocation {
         return attachments;
     }
 
+    @Override
     public Invoker<?> getInvoker() {
         return null;
     }
@@ -87,10 +88,12 @@ public class LegacyInvocation implements Invocation {
         return null;
     }
 
+    @Override
     public String getAttachment(String key) {
         return getAttachments().get(key);
     }
 
+    @Override
     public String getAttachment(String key, String defaultValue) {
         return getAttachments().get(key);
     }

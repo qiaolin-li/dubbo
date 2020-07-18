@@ -50,37 +50,74 @@ public class RpcInvocation implements Invocation, Serializable {
 
     private static final long serialVersionUID = -4355285085441097045L;
 
+    /**
+     *  目标服务唯一名称   {group}/{interfaceName}:{version}
+     */
     private String targetServiceUniqueName;
 
+    /**
+     *  调用的方法
+     */
     private String methodName;
+
+    /**
+     * 调用的接口名称
+     */
     private String serviceName;
 
+    /**
+     *  调用的参数类型数组
+     */
     private transient Class<?>[] parameterTypes;
+
+    /**
+     *  调用方法参数的描述 TODO 弄啥的？？
+     */
     private String parameterTypesDesc;
+
+    /**
+     *  TODO 兼容参数？？？
+     */
     private String[] compatibleParamSignatures;
 
+    /**
+     *  调用方法时传递的参数
+     */
     private Object[] arguments;
 
     /**
      * Passed to the remote server during RPC call
+     * 附加数据，消费者调用服务者时传递的额外信息
      */
     private Map<String, String> attachments;
 
     /**
      * Only used on the caller side, will not appear on the wire.
+     * 只在调用方使用，TODO 干啥的？？
      */
     private Map<Object, Object> attributes = new HashMap<Object, Object>();
 
+    /**
+     *  待调用的invoker
+     */
     private transient Invoker<?> invoker;
 
+    /**
+     *  调用方法的返回值类型
+     */
     private transient Class<?> returnType;
 
+    /**
+     *  TODO 这是啥
+     */
     private transient Type[] returnTypes;
 
+    /**
+     *  调用类型 通过/异步/future
+     */
     private transient InvokeMode invokeMode;
 
-    public RpcInvocation() {
-    }
+    public RpcInvocation() {  }
 
     public RpcInvocation(Invocation invocation, Invoker<?> invoker) {
         this(invocation.getMethodName(), invocation.getServiceName(), invocation.getParameterTypes(),

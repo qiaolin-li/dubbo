@@ -44,6 +44,9 @@ import static org.apache.dubbo.rpc.Constants.STUB_KEY;
 
 /**
  * StubProxyFactoryWrapper
+ * 代理工厂包装器， 用于在获得 invoker之后，存在本地存根时，做一个包装操作
+ * stub、local 均为本地存根，目前使用的是 stub， local为旧版本的
+ *
  */
 public class StubProxyFactoryWrapper implements ProxyFactory {
 
@@ -70,51 +73,73 @@ public class StubProxyFactoryWrapper implements ProxyFactory {
     @SuppressWarnings({"unchecked", "rawtypes"})
     public <T> T getProxy(Invoker<T> invoker) throws RpcException {
         T proxy = proxyFactory.getProxy(invoker);
-        if (GenericService.class != invoker.getInterface()) {
-            URL url = invoker.getUrl();
-            String stub = url.getParameter(STUB_KEY, url.getParameter(LOCAL_KEY));
-            if (ConfigUtils.isNotEmpty(stub)) {
-                Class<?> serviceType = invoker.getInterface();
-                if (ConfigUtils.isDefault(stub)) {
-                    if (url.hasParameter(STUB_KEY)) {
-                        stub = serviceType.getName() + "Stub";
-                    } else {
-                        stub = serviceType.getName() + "Local";
-                    }
-                }
-                try {
-                    Class<?> stubClass = ReflectUtils.forName(stub);
-                    if (!serviceType.isAssignableFrom(stubClass)) {
-                        throw new IllegalStateException("The stub implementation class " + stubClass.getName() + " not implement interface " + serviceType.getName());
-                    }
-                    try {
-                        Constructor<?> constructor = ReflectUtils.findConstructor(stubClass, serviceType);
-                        proxy = (T) constructor.newInstance(new Object[]{proxy});
-                        //export stub service
-                        URLBuilder urlBuilder = URLBuilder.from(url);
-                        if (url.getParameter(STUB_EVENT_KEY, DEFAULT_STUB_EVENT)) {
-                            urlBuilder.addParameter(STUB_EVENT_METHODS_KEY, StringUtils.join(Wrapper.getWrapper(proxy.getClass()).getDeclaredMethodNames(), ","));
-                            urlBuilder.addParameter(IS_SERVER_KEY, Boolean.FALSE.toString());
-                            try {
-                                export(proxy, (Class) invoker.getInterface(), urlBuilder.build());
-                            } catch (Exception e) {
-                                LOGGER.error("export a stub service error.", e);
-                            }
-                        }
-                    } catch (NoSuchMethodException e) {
-                        throw new IllegalStateException("No such constructor \"public " + stubClass.getSimpleName() + "(" + serviceType.getName() + ")\" in stub implementation class " + stubClass.getName(), e);
-                    }
-                } catch (Throwable t) {
-                    LOGGER.error("Failed to create stub implementation class " + stub + " in consumer " + NetUtils.getLocalHost() + " use dubbo version " + Version.getVersion() + ", cause: " + t.getMessage(), t);
-                    // ignore
-                }
+
+        if (GenericService.class == invoker.getInterface()) {
+            return proxy;
+        }
+
+        URL url = invoker.getUrl();
+        // 获取stub、local配置的存根类名
+        String stub = url.getParameter(STUB_KEY, url.getParameter(LOCAL_KEY));
+
+        // 不在本地存根，返回proxy即可
+        if (ConfigUtils.isNotEmpty(stub)) {
+           return proxy;
+        }
+
+        Class<?> serviceType = invoker.getInterface();
+        // 如果为true或者default,那么会去尝试 类名+Stub/Local
+        if (ConfigUtils.isDefault(stub)) {
+            if (url.hasParameter(STUB_KEY)) {
+                stub = serviceType.getName() + "Stub";
+            } else {
+                stub = serviceType.getName() + "Local";
             }
+        }
+
+
+        try {
+            // 获取存根类class
+            Class<?> stubClass = ReflectUtils.forName(stub);
+            // 存根类也必须实现当前引用服务接口
+            if (!serviceType.isAssignableFrom(stubClass)) {
+                throw new IllegalStateException("The stub implementation class " + stubClass.getName() + " not implement interface " + serviceType.getName());
+            }
+            try {
+                /**
+                 *  查找存根类构造，  存根类必须拥有一个以当前引用的接口为参数的构造器
+                 *  {@link org.apache.dubbo.config.AbstractInterfaceConfig.checkStubAndLocal}中已经检查是否存在
+                 */
+                Constructor<?> constructor = ReflectUtils.findConstructor(stubClass, serviceType);
+
+                // 包装它，其实就是一个静态代理
+                proxy = (T) constructor.newInstance(new Object[]{proxy});
+
+                // TODO 不知道这是干啥的？为啥还要去暴露服务呢？？？？？
+                //export stub service
+                URLBuilder urlBuilder = URLBuilder.from(url);
+                if (url.getParameter(STUB_EVENT_KEY, DEFAULT_STUB_EVENT)) {
+                    urlBuilder.addParameter(STUB_EVENT_METHODS_KEY, StringUtils.join(Wrapper.getWrapper(proxy.getClass()).getDeclaredMethodNames(), ","));
+                    urlBuilder.addParameter(IS_SERVER_KEY, Boolean.FALSE.toString());
+                    try {
+                        export(proxy, (Class) invoker.getInterface(), urlBuilder.build());
+                    } catch (Exception e) {
+                        LOGGER.error("export a stub service error.", e);
+                    }
+                }
+            } catch (NoSuchMethodException e) {
+                throw new IllegalStateException("No such constructor \"public " + stubClass.getSimpleName() + "(" + serviceType.getName() + ")\" in stub implementation class " + stubClass.getName(), e);
+            }
+        } catch (Throwable t) {
+            LOGGER.error("Failed to create stub implementation class " + stub + " in consumer " + NetUtils.getLocalHost() + " use dubbo version " + Version.getVersion() + ", cause: " + t.getMessage(), t);
+            // ignore
         }
         return proxy;
     }
 
     @Override
     public <T> Invoker<T> getInvoker(T proxy, Class<T> type, URL url) throws RpcException {
+        // stub对服务端没有用，虽然可以配置，但是没有任何效果
         return proxyFactory.getInvoker(proxy, type, url);
     }
 

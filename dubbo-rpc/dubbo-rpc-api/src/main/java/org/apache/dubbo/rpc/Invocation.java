@@ -21,7 +21,7 @@ import java.util.stream.Stream;
 
 /**
  * Invocation. (API, Prototype, NonThreadSafe)
- *
+ *  远程调用的参数
  * @serial Don't change the class name and package name.
  * @see org.apache.dubbo.rpc.Invoker#invoke(Invocation)
  * @see org.apache.dubbo.rpc.RpcInvocation

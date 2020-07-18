@@ -34,11 +34,21 @@ import java.util.regex.Matcher;
 
 /**
  * Wrapper.
+ * 生成包装类，
+ * 将反射调用转成普通调用的方式 详见{@link #invokeMethod(Object, String, Class[], Object[])}方法
  */
 public abstract class Wrapper {
-    private static final Map<Class<?>, Wrapper> WRAPPER_MAP = new ConcurrentHashMap<Class<?>, Wrapper>(); //class wrapper map
+
+
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
+
+    /** 包装类缓存，享元模式  Map<包装的类型，包装类> */
+    private static final Map<Class<?>, Wrapper> WRAPPER_MAP = new ConcurrentHashMap<>();
+
+    /** Object的方法 */
     private static final String[] OBJECT_METHODS = new String[]{"getClass", "hashCode", "toString", "equals"};
+
+    /** Object的包装类，一些方法基本上都会抛出异常 */
     private static final Wrapper OBJECT_WRAPPER = new Wrapper() {
         @Override
         public String[] getMethodNames() {
@@ -95,28 +105,39 @@ public abstract class Wrapper {
             throw new NoSuchMethodException("Method [" + mn + "] not found.");
         }
     };
+
+    /** 包装的class数量  */
     private static AtomicLong WRAPPER_CLASS_COUNTER = new AtomicLong(0);
 
     /**
-     * get wrapper.
-     *
+     * 根据class获取包装类
      * @param c Class instance.
      * @return Wrapper instance(not null).
      */
     public static Wrapper getWrapper(Class<?> c) {
-        while (ClassGenerator.isDynamicClass(c)) // can not wrapper on dynamic class.
-        {
+
+        // can not wrapper on dynamic class.
+        // 不能包装动态类，动态类为实现了 ClassGenerator.DC
+        while (ClassGenerator.isDynamicClass(c)) {
             c = c.getSuperclass();
         }
 
+        // class是object,则返回Object的包装类
         if (c == Object.class) {
             return OBJECT_WRAPPER;
         }
 
+        // 包装类不存在的情况下创建并缓存，这里防止并发操作
         return WRAPPER_MAP.computeIfAbsent(c, key -> makeWrapper(key));
     }
 
+    /**
+     *  创建Class c的包装类
+     * @param c
+     * @return
+     */
     private static Wrapper makeWrapper(Class<?> c) {
+        // class 不能为基本类型，包括8种基本类型和void类型
         if (c.isPrimitive()) {
             throw new IllegalArgumentException("Can not create wrapper for primitive type: " + c);
         }

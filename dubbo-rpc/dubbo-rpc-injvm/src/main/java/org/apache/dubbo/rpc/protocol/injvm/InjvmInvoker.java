@@ -30,6 +30,8 @@ import static org.apache.dubbo.common.constants.CommonConstants.LOCALHOST_VALUE;
 
 /**
  * InjvmInvoker
+ *
+ * jvm 的invoke，为啥要搞个injvm呢？直接调用不好吗？
  */
 class InjvmInvoker<T> extends AbstractInvoker<T> {
 
@@ -55,11 +57,16 @@ class InjvmInvoker<T> extends AbstractInvoker<T> {
 
     @Override
     public Result doInvoke(Invocation invocation) throws Throwable {
+        // 从 exporterMap中获取
         Exporter<?> exporter = InjvmProtocol.getExporter(exporterMap, getUrl());
         if (exporter == null) {
             throw new RpcException("Service [" + key + "] not found.");
         }
+
+        // 设置远程地址为 localhost 127.0.0.1
         RpcContext.getContext().setRemoteAddress(LOCALHOST_VALUE, 0);
+
+        // 执行调用
         return exporter.getInvoker().invoke(invocation);
     }
 }

@@ -87,6 +87,7 @@ public class DefaultExecutorRepository implements ExecutorRepository {
         return executor;
     }
 
+    @Override
     public ExecutorService getExecutor(URL url) {
         String componentKey = EXECUTOR_SERVICE_COMPONENT_KEY;
         if (CONSUMER_SIDE.equalsIgnoreCase(url.getParameter(SIDE_KEY))) {

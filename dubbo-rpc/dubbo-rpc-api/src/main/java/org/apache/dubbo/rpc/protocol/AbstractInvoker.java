@@ -152,6 +152,7 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
     public Result invoke(Invocation inv) throws RpcException {
         // if invoker is destroyed due to address refresh from registry,
         // let's allow the current invoke to proceed
+        // 即使 invoker销毁，也允许程序继续调用 ， TODO 为什么呢？
         if (destroyed.get()) {
             logger.warn("Invoker for service " + this + " on consumer " + NetUtils.getLocalHost() + " is destroyed, "
                     + ", dubbo version is " + Version.getVersion() + ", this invoker should not be used any longer");
@@ -161,10 +162,11 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
         invocation.setInvoker(this);
 
         if (CollectionUtils.isNotEmptyMap(attachment)) {
-            // invocation 附加属性
+            // invocation 附加属性， 这里如果某个附加参数不存在，才会使用 attachment中的
             invocation.addAttachmentsIfAbsent(attachment);
         }
 
+        // 将上下文中的附加属性过来
         Map<String, String> contextAttachments = RpcContext.getContext().getAttachments();
         if (CollectionUtils.isNotEmptyMap(contextAttachments)) {
             /**
@@ -173,16 +175,19 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
              * by the built-in retry mechanism of the Dubbo. The attachment to update RpcContext will no longer work, which is
              * a mistake in most cases (for example, through Filter to RpcContext output traceId and spanId and other information).
              */
-            // 将上下文中的附加属性过来
+
             invocation.addAttachments(contextAttachments);
         }
 
-        // 设置执行模型
+        // 设置执行模型  Future/Sync/Async
         invocation.setInvokeMode(RpcUtils.getInvokeMode(url, invocation));
+
+        // 如果是异步的话，设置 invocationId
         RpcUtils.attachInvocationIdIfAsync(getUrl(), invocation);
 
         AsyncRpcResult asyncResult;
         try {
+
             asyncResult = (AsyncRpcResult) doInvoke(invocation);
         } catch (InvocationTargetException e) { // biz exception
             Throwable te = e.getTargetException();
