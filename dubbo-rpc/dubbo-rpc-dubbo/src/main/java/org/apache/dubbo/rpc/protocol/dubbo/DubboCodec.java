@@ -45,26 +45,41 @@ import static org.apache.dubbo.rpc.protocol.dubbo.Constants.DEFAULT_DECODE_IN_IO
 
 /**
  * Dubbo codec.
+ * Dubbo编解码器
  */
 public class DubboCodec extends ExchangeCodec {
 
     public static final String NAME = "dubbo";
     public static final String DUBBO_VERSION = Version.getProtocolVersion();
+    // 响应是异常
     public static final byte RESPONSE_WITH_EXCEPTION = 0;
+    // 响应是值
     public static final byte RESPONSE_VALUE = 1;
+    // 响应是空值
     public static final byte RESPONSE_NULL_VALUE = 2;
+    // TODO 上面的这些操作在附件中？
     public static final byte RESPONSE_WITH_EXCEPTION_WITH_ATTACHMENTS = 3;
     public static final byte RESPONSE_VALUE_WITH_ATTACHMENTS = 4;
     public static final byte RESPONSE_NULL_VALUE_WITH_ATTACHMENTS = 5;
+
+    // 方法参数空数组
     public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
+    // 方法参数类型空数组
     public static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
     private static final Logger log = LoggerFactory.getLogger(DubboCodec.class);
 
     @Override
     protected Object decodeBody(Channel channel, InputStream is, byte[] header) throws IOException {
-        byte flag = header[2], proto = (byte) (flag & SERIALIZATION_MASK);
+        // 标记位，标记当前是请求还是响应
+        byte flag = header[2];
+
+        // 获得序列化对象
+        byte proto = (byte) (flag & SERIALIZATION_MASK);
+
         // get request id.
         long id = Bytes.bytes2long(header, 4);
+
+        // TODO 这里是请求，为什么要去解析响应呢？？？？？？？？
         if ((flag & FLAG_REQUEST) == 0) {
             // decode response.
             Response res = new Response(id);
@@ -81,12 +96,15 @@ public class DubboCodec extends ExchangeCodec {
                         ObjectInput in = CodecSupport.deserialize(channel.getUrl(), is, proto);
                         data = decodeEventData(channel, in);
                     } else {
+
                         DecodeableRpcResult result;
+                        // 根据配置，解码的线程池不同，decode.in.io =true,在dubbo线程池中解码，就是现在这个位置
                         if (channel.getUrl().getParameter(DECODE_IN_IO_THREAD_KEY, DEFAULT_DECODE_IN_IO_THREAD)) {
                             result = new DecodeableRpcResult(channel, res, is,
                                     (Invocation) getRequestData(id), proto);
                             result.decode();
                         } else {
+                            // 这个放到netty中去解码 TODO 后面再看看
                             result = new DecodeableRpcResult(channel, res,
                                     new UnsafeByteArrayInputStream(readMessageData(is)),
                                     (Invocation) getRequestData(id), proto);
@@ -95,6 +113,7 @@ public class DubboCodec extends ExchangeCodec {
                     }
                     res.setResult(data);
                 } else {
+                    // 如果是异常的话
                     ObjectInput in = CodecSupport.deserialize(channel.getUrl(), is, proto);
                     res.setErrorMessage(in.readUTF());
                 }
@@ -102,6 +121,7 @@ public class DubboCodec extends ExchangeCodec {
                 if (log.isWarnEnabled()) {
                     log.warn("Decode response failed: " + t.getMessage(), t);
                 }
+                // 写入错误信息
                 res.setStatus(Response.CLIENT_ERROR);
                 res.setErrorMessage(StringUtils.toString(t));
             }
@@ -135,6 +155,7 @@ public class DubboCodec extends ExchangeCodec {
                 if (log.isWarnEnabled()) {
                     log.warn("Decode request failed: " + t.getMessage(), t);
                 }
+
                 // bad request
                 req.setBroken(true);
                 req.setData(t);
@@ -165,20 +186,33 @@ public class DubboCodec extends ExchangeCodec {
 
     @Override
     protected void encodeRequestData(Channel channel, ObjectOutput out, Object data, String version) throws IOException {
+        // 将请求数据编码
         RpcInvocation inv = (RpcInvocation) data;
 
+        // dubbo 版本号
         out.writeUTF(version);
+
+        // 路径 TODO 这个路径是啥来着
         out.writeUTF(inv.getAttachment(PATH_KEY));
+        // 获取接口的版本号？
         out.writeUTF(inv.getAttachment(VERSION_KEY));
 
+        // 请求的方法
         out.writeUTF(inv.getMethodName());
+
+        // 请求的参数类型描述 TODO 不知道是啥，到时候看看
         out.writeUTF(inv.getParameterTypesDesc());
+
+        // 请求方法的实参
         Object[] args = inv.getArguments();
         if (args != null) {
+            // 编码每个参数，并写入到输出流中
             for (int i = 0; i < args.length; i++) {
                 out.writeObject(encodeInvocationArgument(channel, inv, i));
             }
         }
+
+        // 写出附件信息
         out.writeAttachments(inv.getAttachments());
     }
 
@@ -186,24 +220,38 @@ public class DubboCodec extends ExchangeCodec {
     protected void encodeResponseData(Channel channel, ObjectOutput out, Object data, String version) throws IOException {
         Result result = (Result) data;
         // currently, the version value in Response records the version of Request
+        // 是否支持响应中携带附件
         boolean attach = Version.isSupportResponseAttachment(version);
+
         Throwable th = result.getException();
+
         if (th == null) {
+            // 如果响应中没有异常
             Object ret = result.getValue();
             if (ret == null) {
+                // 如果响应中没有数据，附件不同空，则可能数据在附件中，否则标记空值
                 out.writeByte(attach ? RESPONSE_NULL_VALUE_WITH_ATTACHMENTS : RESPONSE_NULL_VALUE);
             } else {
+                // 有数据，如果附件不为空，则标记值在附件中，否则标记值在响应中， TODO 为什么值在附件中啊？？？
                 out.writeByte(attach ? RESPONSE_VALUE_WITH_ATTACHMENTS : RESPONSE_VALUE);
+                // 写入数据到输出流 TODO 写到那里去了呢？
                 out.writeObject(ret);
             }
         } else {
+            // 有异常，附件不为空，标记异常在附件中，否则标记异常在响应中
             out.writeByte(attach ? RESPONSE_WITH_EXCEPTION_WITH_ATTACHMENTS : RESPONSE_WITH_EXCEPTION);
+
+            // 写入异常数据
             out.writeThrowable(th);
         }
 
+        // 是否存在附件
         if (attach) {
             // returns current version of Response to consumer side.
+            // 在响应中设置dubbo的版本
             result.getAttachments().put(DUBBO_VERSION_KEY, Version.getProtocolVersion());
+
+            // 写出附件信息
             out.writeAttachments(result.getAttachments());
         }
     }

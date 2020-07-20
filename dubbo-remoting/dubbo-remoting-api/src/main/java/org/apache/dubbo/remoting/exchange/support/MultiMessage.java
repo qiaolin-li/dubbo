@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
+ * 多消息类，包装了多个消息
  * @see org.apache.dubbo.remoting.transport.MultiMessageHandler
  */
 public final class MultiMessage implements Iterable {

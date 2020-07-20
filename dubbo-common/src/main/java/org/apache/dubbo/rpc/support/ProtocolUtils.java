@@ -38,7 +38,7 @@ public class ProtocolUtils {
     }
 
     /**
-     * {serviceGroup}/serviceName/{serviceVersion}:port
+     * {serviceGroup}/serviceName:{serviceVersion}:port
      */
     public static String serviceKey(int port, String serviceName, String serviceVersion, String serviceGroup) {
         StringBuilder buf = new StringBuilder();

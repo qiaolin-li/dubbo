@@ -130,6 +130,7 @@ public class DubboProtocol extends AbstractProtocol {
             Invoker<?> invoker = getInvoker(channel, inv);
             // need to consider backward-compatibility if it's a callback
             if (Boolean.TRUE.toString().equals(inv.getAttachments().get(IS_CALLBACK_SERVICE_INVOKE))) {
+                // TODO 这里的方法是谁的方法？提供者， 看是否有这个方法？
                 String methodsStr = invoker.getUrl().getParameters().get("methods");
                 boolean hasMethod = false;
                 if (methodsStr == null || !methodsStr.contains(",")) {
@@ -156,7 +157,7 @@ public class DubboProtocol extends AbstractProtocol {
             // 执行调用
             Result result = invoker.invoke(inv);
 
-            // TODO 这是干啥？？/**/
+            // TODO 这是干啥？？ 答：将result中的 CompletableFuture取出
             return result.thenApply(Function.identity());
         }
 
@@ -172,6 +173,7 @@ public class DubboProtocol extends AbstractProtocol {
 
         @Override
         public void connected(Channel channel) throws RemotingException {
+            // 连接完成时调用方法
             invoke(channel, ON_CONNECT_KEY);
         }
 
@@ -184,6 +186,7 @@ public class DubboProtocol extends AbstractProtocol {
         }
 
         private void invoke(Channel channel, String methodKey) {
+            // 创建invocation
             Invocation invocation = createInvocation(channel, channel.getUrl(), methodKey);
             if (invocation != null) {
                 try {
@@ -196,7 +199,7 @@ public class DubboProtocol extends AbstractProtocol {
 
         /**
          * FIXME channel.getUrl() always binds to a fixed service, and this service is random.
-         * we can choose to use a common service to carry onConnect event if there's no easy way to get the specific
+         * we can choose to use a common service to  onConnect event if there's no easy way to get the specific
          * service this connection is binding to.
          * @param channel
          * @param url
@@ -214,6 +217,8 @@ public class DubboProtocol extends AbstractProtocol {
             invocation.setAttachment(GROUP_KEY, url.getParameter(GROUP_KEY));
             invocation.setAttachment(INTERFACE_KEY, url.getParameter(INTERFACE_KEY));
             invocation.setAttachment(VERSION_KEY, url.getParameter(VERSION_KEY));
+
+            // TODO 设置事件类型？干啥的
             if (url.getParameter(STUB_EVENT_KEY, false)) {
                 invocation.setAttachment(STUB_EVENT_KEY, Boolean.TRUE.toString());
             }
@@ -247,6 +252,13 @@ public class DubboProtocol extends AbstractProtocol {
                         .equals(NetUtils.filterLocalHost(address.getAddress().getHostAddress()));
     }
 
+    /**
+     *  获取invoker对象
+     * @param channel 链接通道
+     * @param inv     执行对象
+     * @return
+     * @throws RemotingException
+     */
     Invoker<?> getInvoker(Channel channel, Invocation inv) throws RemotingException {
         boolean isCallBackServiceInvoke = false;
         boolean isStubServiceInvoke = false;
@@ -254,6 +266,7 @@ public class DubboProtocol extends AbstractProtocol {
         String path = inv.getAttachments().get(PATH_KEY);
 
         // if it's callback service on client side
+        // TODO 是不是链接开发之内的事件，这是干啥的呢？
         isStubServiceInvoke = Boolean.TRUE.toString().equals(inv.getAttachments().get(STUB_EVENT_KEY));
         if (isStubServiceInvoke) {
             port = channel.getRemoteAddress().getPort();

@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * This class will work as a wrapper wrapping outside of each protocol invoker.
- * invoker包装类，他将invoker的异步调用转成同步的，大概是想让客户端无感吧，
+ * invoker包装类，如果是同步请求，他会将invoker的异步调用转成同步的，来达到同步的效果
  * @param <T>
  */
 public class AsyncToSyncInvoker<T> implements Invoker<T> {

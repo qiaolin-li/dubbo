@@ -254,6 +254,14 @@ class CallbackServiceCodec {
         }
     }
 
+    /**
+     *  编码请求中的参数
+     * @param channel
+     * @param inv
+     * @param paraIndex
+     * @return
+     * @throws IOException
+     */
     public static Object encodeInvocationArgument(Channel channel, RpcInvocation inv, int paraIndex) throws IOException {
         // get URL directly
         URL url = inv.getInvoker() == null ? null : inv.getInvoker().getUrl();
