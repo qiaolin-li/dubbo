@@ -35,6 +35,10 @@ import static org.apache.dubbo.common.constants.CommonConstants.$INVOKE;
 
 /**
  * EventFilter
+ * 实现消费端事件通知功能
+ * 详情见：http://dubbo.apache.org/zh-cn/docs/user/demos/events-notify.html
+ * 主要处理客户端的调用提供者时的一些事件、内似AOP，在调用前（oninvoker）、正常返回后（onreturn）、异常时（onthrow）
+ * 去调用用于自定义的实例的方法，感觉看起来不是那么好用
  */
 @Activate(group = CommonConstants.CONSUMER)
 public class FutureFilter implements Filter, Filter.Listener {
@@ -43,6 +47,7 @@ public class FutureFilter implements Filter, Filter.Listener {
 
     @Override
     public Result invoke(final Invoker<?> invoker, final Invocation invocation) throws RpcException {
+        // 调用提供者之前调用onInvoke方法，如果已经配置的情况下
         fireInvokeCallback(invoker, invocation);
         // need to configure if there's return value before the invocation in order to help invoker to judge if it's
         // necessary to return future.
@@ -63,7 +68,13 @@ public class FutureFilter implements Filter, Filter.Listener {
 
     }
 
+    /**
+     *  调用 onInvoker事件方法
+     * @param invoker
+     * @param invocation
+     */
     private void fireInvokeCallback(final Invoker<?> invoker, final Invocation invocation) {
+       //
         final ConsumerModel.AsyncMethodInfo asyncMethodInfo = getAsyncMethodInfo(invoker, invocation);
         if (asyncMethodInfo == null) {
             return;
@@ -184,13 +195,23 @@ public class FutureFilter implements Filter, Filter.Listener {
         }
     }
 
+    /**
+     *  获取事件处理信息类，包含了消费接口者的一些调用事件信息
+     *  oninvoker、onreturn、onthrow、事件方法的执行实例、方法对象
+     * @param invoker
+     * @param invocation
+     * @return
+     */
     private ConsumerModel.AsyncMethodInfo getAsyncMethodInfo(Invoker<?> invoker, Invocation invocation) {
+
         final ConsumerModel consumerModel = ApplicationModel.getConsumerModel(invoker.getUrl().getServiceKey());
         if (consumerModel == null) {
             return null;
         }
 
         String methodName = invocation.getMethodName();
+
+        // 泛化调用，取第一个参数，第一个参数为方法名
         if (methodName.equals($INVOKE)) {
             methodName = (String) invocation.getArguments()[0];
         }

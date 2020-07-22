@@ -112,22 +112,32 @@ public class ConsumerModel {
         return referenceConfig;
     }
 
+    /**
+     *  事件方法信息，包含了消费端的事件方法
+     */
     public static class AsyncMethodInfo {
+
+        // 处理oninvoke事件的方法实例
         // callback instance when async-call is invoked
         private Object oninvokeInstance;
 
+        // 处理oninvoker事件的方法
         // callback method when async-call is invoked
         private Method oninvokeMethod;
 
+        // 处理onreturn事件的方法实例
         // callback instance when async-call is returned
         private Object onreturnInstance;
 
+        // 处理onreturn事件的方法
         // callback method when async-call is returned
         private Method onreturnMethod;
 
+        // 处理onthrow事件的方法实例
         // callback instance when async-call has exception thrown
         private Object onthrowInstance;
 
+        // 处理onthrow事件的方法
         // callback method when async-call has exception thrown
         private Method onthrowMethod;
 

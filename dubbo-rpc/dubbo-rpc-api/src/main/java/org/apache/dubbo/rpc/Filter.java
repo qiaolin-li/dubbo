@@ -64,8 +64,20 @@ public interface Filter {
 
     interface Listener {
 
+        /**
+         *  调用成功时回调该方法
+         * @param appResponse
+         * @param invoker
+         * @param invocation
+         */
         void onMessage(Result appResponse, Invoker<?> invoker, Invocation invocation);
 
+        /**
+         * 调用发生异常时回调该方法
+         * @param t 发生的异常
+         * @param invoker
+         * @param invocation
+         */
         void onError(Throwable t, Invoker<?> invoker, Invocation invocation);
     }
 
