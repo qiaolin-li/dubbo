@@ -28,13 +28,18 @@ import org.apache.dubbo.rpc.RpcException;
 import static org.apache.dubbo.rpc.Constants.$ECHO;
 
 /**
- * Dubbo provided default Echo echo service, which is available for all dubbo provider service interface.
+ * Dubbo provided default Echo echo service,
+ * which is available for all dubbo provider service interface.
+ *
+ * 回声服务，用于快速证明服务是否可用
+ * 所有的提供者都可以使用回声服务
  */
 @Activate(group = CommonConstants.PROVIDER, order = -110000)
 public class EchoFilter implements Filter {
 
     @Override
     public Result invoke(Invoker<?> invoker, Invocation inv) throws RpcException {
+        // 当发现调用的是回声服务的方法（$echo）、并且参数只有一个时，直接将参数响应给消费者
         if (inv.getMethodName().equals($ECHO) && inv.getArguments() != null && inv.getArguments().length == 1) {
             return AsyncRpcResult.newDefaultAsyncResult(inv.getArguments()[0], inv);
         }

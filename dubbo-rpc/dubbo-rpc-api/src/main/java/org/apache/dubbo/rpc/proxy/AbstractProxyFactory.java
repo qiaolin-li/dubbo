@@ -36,6 +36,8 @@ import static org.apache.dubbo.rpc.Constants.INTERFACES;
  * AbstractProxyFactory
  */
 public abstract class AbstractProxyFactory implements ProxyFactory {
+    // 内部接口，回声服务接口和销毁接口
+    // 因此所有引用的服务都可以使用回声、销毁功能，只需要把他们强转成对应得接口
     private static final Class<?>[] INTERNAL_INTERFACES = new Class<?>[]{
             EchoService.class, Destroyable.class
     };
@@ -65,6 +67,7 @@ public abstract class AbstractProxyFactory implements ProxyFactory {
         }
 
         interfaces.add(invoker.getInterface());
+        // 加入回声服务接口、支持管理的接口
         interfaces.addAll(Arrays.asList(INTERNAL_INTERFACES));
 
         return getProxy(invoker, interfaces.toArray(new Class<?>[0]));
