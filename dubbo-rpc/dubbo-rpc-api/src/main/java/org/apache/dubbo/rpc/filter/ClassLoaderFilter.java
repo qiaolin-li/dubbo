@@ -26,17 +26,26 @@ import org.apache.dubbo.rpc.RpcException;
 
 /**
  * Set the current execution thread class loader to service interface's class loader.
+ * 将当前线程的类加载器设置成服务接口的类加载器
+ * 见：https://github.com/apache/dubbo/issues/1406
+ * https://github.com/apache/dubbo/issues/178
+ * 我想是不是怕你的在接口逻辑中去加载了某些类，但是因为类加载器不是我们的加载器，导致有些类加载不到或加载错误
  */
 @Activate(group = CommonConstants.PROVIDER, order = -30000)
 public class ClassLoaderFilter implements Filter {
 
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
+        // 保存线程原有类加载器
         ClassLoader ocl = Thread.currentThread().getContextClassLoader();
+
+        // 将线程类加载器设置为接口的类加载器
         Thread.currentThread().setContextClassLoader(invoker.getInterface().getClassLoader());
         try {
             return invoker.invoke(invocation);
         } finally {
+
+            // 调用完毕后恢复线程原有类加载器
             Thread.currentThread().setContextClassLoader(ocl);
         }
     }

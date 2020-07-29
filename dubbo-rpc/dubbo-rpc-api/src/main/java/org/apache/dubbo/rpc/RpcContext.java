@@ -49,6 +49,11 @@ import static org.apache.dubbo.rpc.Constants.RETURN_KEY;
  * For example: A invokes B, then B invokes C. On service B, RpcContext saves invocation info from A to B before B
  * starts invoking C, and saves invocation info from B to C after B invokes C.
  *
+ * 线程上下文对象
+ * 上下文中持久的是一个零时的状态信息，当接发送或接收请求时，RpcContext中保存的状态都会发生改变
+ * 例如 A调用B，B又调用C，
+ * 在A调用B时，B的RpcContext中保存的是A调用B的信息，
+ * 在B调用C时，B的RpcContext中保存的是B调用C的信息
  * @export
  * @see org.apache.dubbo.rpc.filter.ContextFilter
  */
@@ -73,25 +78,55 @@ public class RpcContext {
         }
     };
 
-    private final Map<String, String> attachments = new HashMap<String, String>();
-    private final Map<String, Object> values = new HashMap<String, Object>();
+    /**
+     * 隐式参数集合
+     */
+    private final Map<String, String> attachments = new HashMap<>();
+    private final Map<String, Object> values = new HashMap<>();
 
+    /**
+     * 可调用服务的url集合
+     */
     private List<URL> urls;
 
+    /**
+     * 调用服务的url
+     */
     private URL url;
 
+    /**
+     *  调用服务的方法名
+     */
     private String methodName;
 
+    /**
+     * 调用服务方法的形参列表类型
+     */
     private Class<?>[] parameterTypes;
 
+    /**
+     *  调用服务方法的实参
+     */
     private Object[] arguments;
 
+    /**
+     *  服务消费者的地址
+     */
     private InetSocketAddress localAddress;
 
+    /**
+     * 服务提供者的地址
+     */
     private InetSocketAddress remoteAddress;
 
+    /**
+     *  服务提供者所在的应用名
+     */
     private String remoteApplicationName;
 
+    /**
+     *  下面这是哪个属性对应 urls、url、methodName、parameterTypes、argument
+     */
     @Deprecated
     private List<Invoker<?>> invokers;
     @Deprecated
@@ -101,6 +136,8 @@ public class RpcContext {
 
     // now we don't use the 'values' map to hold these objects
     // we want these objects to be as generic as possible
+    // 我们希望这些对象尽可能的通用
+    // 用于http调用，详见：org.apache.dubbo.rpc.protocol.rest.RpcContextFilter
     private Object request;
     private Object response;
     private AsyncContext asyncContext;
@@ -261,7 +298,7 @@ public class RpcContext {
     }
 
     public List<URL> getUrls() {
-        return urls == null && url != null ? (List<URL>) Arrays.asList(url) : urls;
+        return urls == null && url != null ? Arrays.asList(url) : urls;
     }
 
     public void setUrls(List<URL> urls) {

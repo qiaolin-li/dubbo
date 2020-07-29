@@ -37,6 +37,10 @@ import org.apache.dubbo.common.extension.SPI;
  *
  * Dubbo过滤器，类似Servlet的Filter
  *
+ * <br/>
+ * <img src="../../../../../resources/01.png">
+ *
+ * </img>
  * @see org.apache.dubbo.rpc.filter.GenericFilter
  * @see org.apache.dubbo.rpc.filter.EchoFilter
  * @see org.apache.dubbo.rpc.filter.TokenFilter
