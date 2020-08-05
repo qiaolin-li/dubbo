@@ -32,8 +32,10 @@ import java.util.Map;
  * AccessLogData is a container for log event data. In internally uses map and store each filed of log as value. It
  * does not generate any dynamic value e.g. time stamp, local jmv machine host address etc. It does not allow any null
  * or empty key.
+ * 日志数据容器，使用map来保存日志中的每个字段
  *
  * Note: since its date formatter is a singleton, make sure to run it in single thread only.
+ * 备注：由于日期格式化是单利的，请确保在单线程中创建它
  */
 public final class AccessLogData {
 

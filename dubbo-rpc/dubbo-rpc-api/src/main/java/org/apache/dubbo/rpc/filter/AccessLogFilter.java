@@ -50,6 +50,8 @@ import static org.apache.dubbo.rpc.Constants.ACCESS_LOG_KEY;
 
 /**
  * Record access log for the service.
+ * 记录服务的访问日志
+ * 详见：http://dubbo.apache.org/zh-cn/docs/user/demos/accesslog.html
  * <p>
  * Logger key is <code><b>dubbo.accesslog</b></code>.
  * In order to configure access log appear in the specified appender only, additivity need to be configured in log4j's
@@ -67,19 +69,35 @@ public class AccessLogFilter implements Filter {
 
     private static final Logger logger = LoggerFactory.getLogger(AccessLogFilter.class);
 
+    /**
+     *  日志key
+     */
     private static final String LOG_KEY = "dubbo.accesslog";
 
+    /**
+     * 日志缓冲区大小
+     */
     private static final int LOG_MAX_BUFFER = 5000;
 
+    /**
+     *  日志输出间隔
+     */
     private static final long LOG_OUTPUT_INTERVAL = 5000;
 
+    /**
+     *  文件名日期格式
+     */
     private static final String FILE_DATE_FORMAT = "yyyyMMdd";
 
     // It's safe to declare it as singleton since it runs on single thread only
+    // 因为他只在单线程中使用，所以它被声明为单实例的
     private static final DateFormat FILE_NAME_FORMATTER = new SimpleDateFormat(FILE_DATE_FORMAT);
 
-    private static final Map<String, Set<AccessLogData>> LOG_ENTRIES = new ConcurrentHashMap<String, Set<AccessLogData>>();
+    private static final Map<String, Set<AccessLogData>> LOG_ENTRIES = new ConcurrentHashMap<>();
 
+    /**
+     *  写日志的线程
+     */
     private static final ScheduledExecutorService LOG_SCHEDULED = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("Dubbo-Access-Log", true));
 
     /**
@@ -87,6 +105,7 @@ public class AccessLogFilter implements Filter {
      * defined in url <b>accesslog</b>
      */
     public AccessLogFilter() {
+        // 开启一个写日志到文件的任务
         LOG_SCHEDULED.scheduleWithFixedDelay(this::writeLogToFile, LOG_OUTPUT_INTERVAL, LOG_OUTPUT_INTERVAL, TimeUnit.MILLISECONDS);
     }
 
@@ -101,9 +120,13 @@ public class AccessLogFilter implements Filter {
     @Override
     public Result invoke(Invoker<?> invoker, Invocation inv) throws RpcException {
         try {
+            // 如果开启访问日志
             String accessLogKey = invoker.getUrl().getParameter(ACCESS_LOG_KEY);
             if (ConfigUtils.isNotEmpty(accessLogKey)) {
+                // 构建访问日志对象
                 AccessLogData logData = buildAccessLogData(invoker, inv);
+
+                // 记录日志
                 log(accessLogKey, logData);
             }
         } catch (Throwable t) {
@@ -112,9 +135,16 @@ public class AccessLogFilter implements Filter {
         return invoker.invoke(inv);
     }
 
+    /**
+     *  将访问日志放入到缓冲集合中
+     * @param accessLog 日志文件名，默认值为true或default
+     * @param accessLogData 访问日志数据对象
+     */
     private void log(String accessLog, AccessLogData accessLogData) {
+        // 获得日志文件对应的集合，集合是为了缓冲日志
         Set<AccessLogData> logSet = LOG_ENTRIES.computeIfAbsent(accessLog, k -> new ConcurrentHashSet<>());
 
+        // 如果集合中的日志数量小于最大缓冲数据，放入到集合中，否则打印警告日志，丢弃日志数据对象，
         if (logSet.size() < LOG_MAX_BUFFER) {
             logSet.add(accessLogData);
         } else {
@@ -123,21 +153,39 @@ public class AccessLogFilter implements Filter {
         }
     }
 
+    /**
+     *  写入日志到文件
+     */
     private void writeLogToFile() {
+        // 如果开启了日志，只要开启了日志，这个集合不会为空的
         if (!LOG_ENTRIES.isEmpty()) {
+
+            // 循环所有的日志文件
             for (Map.Entry<String, Set<AccessLogData>> entry : LOG_ENTRIES.entrySet()) {
                 try {
+                    // 日志文件，可能是true/default/具体的文件名
                     String accessLog = entry.getKey();
+
+                    // 访问日志数据对象
                     Set<AccessLogData> logSet = entry.getValue();
+
+                    // 如果是默认的 true/default
                     if (ConfigUtils.isDefault(accessLog)) {
                         processWithServiceLogger(logSet);
                     } else {
+                        // 不是默认的，那么就是具体的文件路径了
                         File file = new File(accessLog);
+
+                        // 保证日志文件的父目录存在
                         createIfLogDirAbsent(file);
                         if (logger.isDebugEnabled()) {
                             logger.debug("Append log to " + accessLog);
                         }
+
+                        // 日志归档
                         renameFile(file);
+
+                        // 将日志数据对象写入到日志文件
                         processWithAccessKeyLogger(logSet, file);
                     }
 
@@ -148,7 +196,14 @@ public class AccessLogFilter implements Filter {
         }
     }
 
+    /**
+     *
+     * @param logSet
+     * @param file
+     * @throws IOException
+     */
     private void processWithAccessKeyLogger(Set<AccessLogData> logSet, File file) throws IOException {
+        // 将日志写入日志文件
         try (FileWriter writer = new FileWriter(file, true)) {
             for (Iterator<AccessLogData> iterator = logSet.iterator();
                  iterator.hasNext();
@@ -156,12 +211,15 @@ public class AccessLogFilter implements Filter {
                 writer.write(iterator.next().getLogMessage());
                 writer.write(System.getProperty("line.separator"));
             }
+            // 刷盘
             writer.flush();
         }
     }
 
+
     private AccessLogData buildAccessLogData(Invoker<?> invoker, Invocation inv) {
         AccessLogData logData = AccessLogData.newLogData();
+        // 构建日志信息
         logData.setServiceName(invoker.getInterface().getName());
         logData.setMethodName(inv.getMethodName());
         logData.setVersion(invoker.getUrl().getParameter(VERSION_KEY));
@@ -172,15 +230,27 @@ public class AccessLogFilter implements Filter {
         return logData;
     }
 
+    /**
+     *  处理默认的日志
+     * @param logSet
+     */
     private void processWithServiceLogger(Set<AccessLogData> logSet) {
-        for (Iterator<AccessLogData> iterator = logSet.iterator();
-             iterator.hasNext();
-             iterator.remove()) {
+        Iterator<AccessLogData> iterator = logSet.iterator();
+        while (iterator.hasNext()) {
             AccessLogData logData = iterator.next();
+
+            // 以 dubbo.access.服务名接口名 写日志
             LoggerFactory.getLogger(LOG_KEY + "." + logData.getServiceName()).info(logData.getLogMessage());
+
+            // 删除这个日志数据对象，防止多次写入
+            iterator.remove();
         }
     }
 
+    /**
+     * 如果日志文件父目录不存在时，创建父目录
+     * @param file
+     */
     private void createIfLogDirAbsent(File file) {
         File dir = file.getParentFile();
         if (null != dir && !dir.exists()) {
@@ -188,6 +258,9 @@ public class AccessLogFilter implements Filter {
         }
     }
 
+    /**
+     * 文件存在时，如果文件最后的更新时间不是今日，那么重命名日志文件名称，加入日期
+     */
     private void renameFile(File file) {
         if (file.exists()) {
             String now = FILE_NAME_FORMATTER.format(new Date());

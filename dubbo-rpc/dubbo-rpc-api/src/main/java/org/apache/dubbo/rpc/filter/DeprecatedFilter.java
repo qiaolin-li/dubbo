@@ -34,7 +34,7 @@ import static org.apache.dubbo.rpc.Constants.DEPRECATED_KEY;
 /**
  * DeprecatedFilter logs error message if a invoked method has been marked as deprecated. To check whether a method
  * is deprecated or not it looks for <b>deprecated</b> attribute value and consider it is deprecated it value is <b>true</b>
- *
+ * 消费者调用过期方式时告警Filter
  * @see Filter
  */
 @Activate(group = CommonConstants.CONSUMER, value = DEPRECATED_KEY)
@@ -46,9 +46,14 @@ public class DeprecatedFilter implements Filter {
 
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
+        // 接口+方法名
         String key = invoker.getInterface().getName() + "." + invocation.getMethodName();
+
+        // 一个方法只打印一次告警
         if (!logged.contains(key)) {
             logged.add(key);
+
+            // 如果方法是已过期的，那么日志告警
             if (invoker.getUrl().getMethodParameter(invocation.getMethodName(), DEPRECATED_KEY, false)) {
                 LOGGER.error("The service method " + invoker.getInterface().getName() + "." + getMethodSignature(invocation) + " is DEPRECATED! Declare from " + invoker.getUrl());
             }
@@ -56,6 +61,11 @@ public class DeprecatedFilter implements Filter {
         return invoker.invoke(invocation);
     }
 
+    /**
+     *  获取方法签名
+     * @param invocation
+     * @return
+     */
     private String getMethodSignature(Invocation invocation) {
         StringBuilder buf = new StringBuilder(invocation.getMethodName());
         buf.append("(");

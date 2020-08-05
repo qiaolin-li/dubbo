@@ -34,6 +34,8 @@ import static org.apache.dubbo.rpc.Constants.TOKEN_KEY;
  * Perform check whether given provider token is matching with remote token or not. If it does not match
  * it will not allow to invoke remote method.
  *
+ * 令牌验证Filter
+ * 如果提供者存在令牌的情况下，验证消费者传过来的令牌是否有效，来决定是否让远程服务调用服务
  * @see Filter
  */
 @Activate(group = CommonConstants.PROVIDER, value = TOKEN_KEY)
@@ -42,13 +44,22 @@ public class TokenFilter implements Filter {
     @Override
     public Result invoke(Invoker<?> invoker, Invocation inv)
             throws RpcException {
+
+        // 获取提供者的token
         String token = invoker.getUrl().getParameter(TOKEN_KEY);
+
+        // 如果存在token，那么去验证它
         if (ConfigUtils.isNotEmpty(token)) {
             Class<?> serviceType = invoker.getInterface();
             Map<String, String> attachments = inv.getAttachments();
             String remoteToken = (attachments == null ? null : attachments.get(TOKEN_KEY));
+
+            // 如果消费者携带的token和提供者的token不一致，则不允许调用
             if (!token.equals(remoteToken)) {
-                throw new RpcException("Invalid token! Forbid invoke remote service " + serviceType + " method " + inv.getMethodName() + "() from consumer " + RpcContext.getContext().getRemoteHost() + " to provider " + RpcContext.getContext().getLocalHost());
+                throw new RpcException("Invalid token! Forbid invoke remote service " + serviceType +
+                        " method " + inv.getMethodName() + "() from consumer " +
+                        RpcContext.getContext().getRemoteHost() + " to provider " +
+                        RpcContext.getContext().getLocalHost());
             }
         }
         return invoker.invoke(inv);
