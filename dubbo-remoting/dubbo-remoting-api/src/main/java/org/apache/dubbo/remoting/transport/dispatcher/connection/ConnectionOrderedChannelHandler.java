@@ -40,9 +40,21 @@ import static org.apache.dubbo.remoting.Constants.CONNECT_QUEUE_CAPACITY;
 import static org.apache.dubbo.remoting.Constants.CONNECT_QUEUE_WARNING_SIZE;
 import static org.apache.dubbo.remoting.Constants.DEFAULT_CONNECT_QUEUE_WARNING_SIZE;
 
+/**
+ * 在 IO 线程上，将连接断开事件放入队列（自己的线程池，只不过只有一个线程而已），有序逐个执行，
+ * 其它消息派发到线程池
+ */
+
 public class ConnectionOrderedChannelHandler extends WrappedChannelHandler {
 
+    /**
+     * 连接、断开事件处理的线程池
+     */
     protected final ThreadPoolExecutor connectionExecutor;
+
+    /**
+     * 队列大小超过多少告警
+     */
     private final int queuewarninglimit;
 
     public ConnectionOrderedChannelHandler(ChannelHandler handler, URL url) {
@@ -50,7 +62,7 @@ public class ConnectionOrderedChannelHandler extends WrappedChannelHandler {
         String threadName = url.getParameter(THREAD_NAME_KEY, DEFAULT_THREAD_NAME);
         connectionExecutor = new ThreadPoolExecutor(1, 1,
                 0L, TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<Runnable>(url.getPositiveParameter(CONNECT_QUEUE_CAPACITY, Integer.MAX_VALUE)),
+                new LinkedBlockingQueue<>(url.getPositiveParameter(CONNECT_QUEUE_CAPACITY, Integer.MAX_VALUE)),
                 new NamedThreadFactory(threadName, true),
                 new AbortPolicyWithReport(threadName, url)
         );  // FIXME There's no place to release connectionExecutor!
@@ -101,6 +113,9 @@ public class ConnectionOrderedChannelHandler extends WrappedChannelHandler {
         }
     }
 
+    /**
+     * 检查线程池中的任务是否超过限制，如果超过，打印警告日志
+     */
     private void checkQueueLength() {
         if (connectionExecutor.getQueue().size() > queuewarninglimit) {
             logger.warn(new IllegalThreadStateException("connectionordered channel handler `queue size: " + connectionExecutor.getQueue().size() + " exceed the warning limit number :" + queuewarninglimit));

@@ -38,18 +38,32 @@ import static org.apache.dubbo.common.constants.CommonConstants.THREADS_KEY;
 
 /**
  * Consider implementing {@code Licycle} to enable executors shutdown when the process stops.
+ * 线程池仓库默认实现
  */
 public class DefaultExecutorRepository implements ExecutorRepository {
     private static final Logger logger = LoggerFactory.getLogger(DefaultExecutorRepository.class);
 
     private int DEFAULT_SCHEDULER_SIZE = Runtime.getRuntime().availableProcessors();
 
+    /**
+     * 单实例的共享线程池
+     */
     private final ExecutorService SHARED_EXECUTOR = Executors.newCachedThreadPool(new NamedThreadFactory("DubboSharedHandler", true));
 
+    /**
+     * 线程调度池，TODO 现在这个东西没屌用，是否未来有规划
+     * 详见：https://github.com/apache/dubbo/issues/6633
+     */
     private Ring<ScheduledExecutorService> scheduledExecutors = new Ring<>();
 
+    /**
+     * 用于服务暴露线程池
+     */
     private ScheduledExecutorService serviceExporterExecutor;
 
+    /**
+     * 应该是客户端、重连的一个线程池，但是现在没用到
+     */
     private ScheduledExecutorService reconnectScheduledExecutor;
 
     private ConcurrentMap<String, ConcurrentMap<Integer, ExecutorService>> data = new ConcurrentHashMap<>();
@@ -61,25 +75,39 @@ public class DefaultExecutorRepository implements ExecutorRepository {
 //        }
 //
 //        reconnectScheduledExecutor = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("Dubbo-reconnect-scheduler"));
+
+        // 创建线程调度池
         serviceExporterExecutor = Executors.newScheduledThreadPool(1, new NamedThreadFactory("Dubbo-exporter-scheduler"));
     }
 
     /**
      * Get called when the server or client instance initiating.
-     *
+     * 在Server或Client初始化时调用该实例
      * @param url
      * @return
      */
     public synchronized ExecutorService createExecutorIfAbsent(URL url) {
+
+        // 容器名称，默认为 ExecutorService类名, 如果url是客户端侧的，那么容器名称为Consumer
         String componentKey = EXECUTOR_SERVICE_COMPONENT_KEY;
         if (CONSUMER_SIDE.equalsIgnoreCase(url.getParameter(SIDE_KEY))) {
             componentKey = CONSUMER_SIDE;
         }
+
+        // 获取容器key对应的 线程池map
         Map<Integer, ExecutorService> executors = data.computeIfAbsent(componentKey, k -> new ConcurrentHashMap<>());
+
+        // 每个不同的端口都开了不同的线程池
         Integer portKey = url.getPort();
+
+        // 如果端口对应的线程池不存在，那么创建它
         ExecutorService executor = executors.computeIfAbsent(portKey, k -> createExecutor(url));
+
         // If executor has been shut down, create a new one
+        // 如果线程池已经关闭，那么重新创建一个，并放入map中缓存
         if (executor.isShutdown() || executor.isTerminated()) {
+
+            // remove旧的 TODO 为什么要先remove呢？ 覆盖行不行呢？看起来也是没问题的
             executors.remove(portKey);
             executor = createExecutor(url);
             executors.put(portKey, executor);
@@ -89,15 +117,22 @@ public class DefaultExecutorRepository implements ExecutorRepository {
 
     @Override
     public ExecutorService getExecutor(URL url) {
+
+        // 获取容器key
         String componentKey = EXECUTOR_SERVICE_COMPONENT_KEY;
         if (CONSUMER_SIDE.equalsIgnoreCase(url.getParameter(SIDE_KEY))) {
+
+            // url 为客户端侧的话，容器key为consumer TODO 为什么客户端要单独分开呢？
             componentKey = CONSUMER_SIDE;
         }
         Map<Integer, ExecutorService> executors = data.get(componentKey);
 
         /**
-         * It's guaranteed that this method is called after {@link #createExecutorIfAbsent(URL)}, so data should already
-         * have Executor instances generated and stored.
+         * It's guaranteed that this method is called after {@link #createExecutorIfAbsent(URL)},
+         * so data should already
+         * have Executor instances generated and stored
+         * 可以保证此方法是在 {@link #createExecutorIfAbsent(URL)}方法调用之后调用，
+         * TODO 既然这样，为什么要判断空呢？并且下面不存在该端口的线程池时又要创建它？
          */
         if (executors == null) {
             logger.warn("No available executors, this is not expected, framework should call createExecutorIfAbsent first " +
@@ -105,6 +140,7 @@ public class DefaultExecutorRepository implements ExecutorRepository {
             return null;
         }
 
+        // 如果线程池不存在，那么创建他
         Integer portKey = url.getPort();
         ExecutorService executor = executors.get(portKey);
         if (executor != null) {
@@ -120,12 +156,23 @@ public class DefaultExecutorRepository implements ExecutorRepository {
     @Override
     public void updateThreadpool(URL url, ExecutorService executor) {
         try {
+            // 1、url中必须要有 threads这个参数，这个是线程数
+            // 2、执行器必须是 ThreadPoolExecutor的实例
+            // 3、执行器不能关闭了
             if (url.hasParameter(THREADS_KEY)
                     && executor instanceof ThreadPoolExecutor && !executor.isShutdown()) {
                 ThreadPoolExecutor threadPoolExecutor = (ThreadPoolExecutor) executor;
+
+                // 如果线程数
                 int threads = url.getParameter(THREADS_KEY, 0);
+
+                // 获取线程池当前的最大线程数
                 int max = threadPoolExecutor.getMaximumPoolSize();
+
+                // 获取线程池当前核心线程数
                 int core = threadPoolExecutor.getCorePoolSize();
+
+                // 如果待更新的线程数大于0， 并且和当前线程的最大线程数、核心线程数不相等，那么设置它
                 if (threads > 0 && (threads != max || threads != core)) {
                     if (threads < core) {
                         threadPoolExecutor.setCorePoolSize(threads);
@@ -161,6 +208,8 @@ public class DefaultExecutorRepository implements ExecutorRepository {
     }
 
     private ExecutorService createExecutor(URL url) {
+
+        // 通过spi创建不同的线程池
         return (ExecutorService) ExtensionLoader.getExtensionLoader(ThreadPool.class).getAdaptiveExtension().getExecutor(url);
     }
 

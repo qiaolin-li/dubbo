@@ -31,10 +31,16 @@ import org.apache.dubbo.remoting.transport.ChannelHandlerDelegate;
 
 import java.util.concurrent.ExecutorService;
 
+/**
+ *  包装处理器类
+ */
 public class WrappedChannelHandler implements ChannelHandlerDelegate {
 
     protected static final Logger logger = LoggerFactory.getLogger(WrappedChannelHandler.class);
 
+    /**
+     * 被包装的处理器
+     */
     protected final ChannelHandler handler;
 
     protected final URL url;
@@ -44,9 +50,7 @@ public class WrappedChannelHandler implements ChannelHandlerDelegate {
         this.url = url;
     }
 
-    public void close() {
-
-    }
+    public void close() {}
 
     @Override
     public void connected(Channel channel) throws RemotingException {
@@ -73,6 +77,13 @@ public class WrappedChannelHandler implements ChannelHandlerDelegate {
         handler.caught(channel, exception);
     }
 
+    /**
+     * 发送反馈，也就是给客户端一个响应
+     * @param channel
+     * @param request
+     * @param t
+     * @throws RemotingException
+     */
     protected void sendFeedback(Channel channel, Request request, Throwable t) throws RemotingException {
         if (request.isTwoWay()) {
             String msg = "Server side(" + url.getIp() + "," + url.getPort()
@@ -87,6 +98,7 @@ public class WrappedChannelHandler implements ChannelHandlerDelegate {
 
     @Override
     public ChannelHandler getHandler() {
+        // 获取到真实的handler
         if (handler instanceof ChannelHandlerDelegate) {
             return ((ChannelHandlerDelegate) handler).getHandler();
         } else {
@@ -102,6 +114,7 @@ public class WrappedChannelHandler implements ChannelHandlerDelegate {
      * Currently, this method is mainly customized to facilitate the thread model on consumer side.
      * 1. Use ThreadlessExecutor, aka., delegate callback directly to the thread initiating the call.
      * 2. Use shared executor to execute the callback.
+     * 获取线程池
      *
      * @param msg
      * @return
@@ -109,6 +122,7 @@ public class WrappedChannelHandler implements ChannelHandlerDelegate {
     public ExecutorService getPreferredExecutorService(Object msg) {
         if (msg instanceof Response) {
             Response response = (Response) msg;
+            // TODO 这个Futute是啥呢？
             DefaultFuture responseFuture = DefaultFuture.getFuture(response.getId());
             // a typical scenario is the response returned after timeout, the timeout response may has completed the future
             if (responseFuture == null) {
@@ -121,12 +135,15 @@ public class WrappedChannelHandler implements ChannelHandlerDelegate {
                 return executor;
             }
         } else {
+
+            // 获取共享线程池
             return getSharedExecutorService();
         }
     }
 
     /**
      * get the shared executor for current Server or Client
+     * 给当前的客户端或服务端获取一个共享的线程池
      *
      * @return
      */

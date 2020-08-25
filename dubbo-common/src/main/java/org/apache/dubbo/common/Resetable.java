@@ -18,13 +18,16 @@ package org.apache.dubbo.common;
 
 /**
  * Resetable.
+ * 可重置接口
+ * 标记对象可重置一些属性
  */
 public interface Resetable {
 
     /**
      * reset.
+     * 重置方法
      *
-     * @param url
+     * @param url 重置的属性来自于该url
      */
     void reset(URL url);
 

@@ -28,12 +28,17 @@ import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
  * ChannelListenerDispatcher
+ * 通道处理器-调度器
+ * 当事件发生时，循环调用所只有的处理器
  */
 public class ChannelHandlerDispatcher implements ChannelHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(ChannelHandlerDispatcher.class);
 
-    private final Collection<ChannelHandler> channelHandlers = new CopyOnWriteArraySet<ChannelHandler>();
+    /**
+     * 通道处理器集合，当发生事件时，循环调用这些处理器
+     */
+    private final Collection<ChannelHandler> channelHandlers = new CopyOnWriteArraySet<>();
 
     public ChannelHandlerDispatcher() {
     }
@@ -64,6 +69,7 @@ public class ChannelHandlerDispatcher implements ChannelHandler {
 
     @Override
     public void connected(Channel channel) {
+        // 循环通知
         for (ChannelHandler listener : channelHandlers) {
             try {
                 listener.connected(channel);

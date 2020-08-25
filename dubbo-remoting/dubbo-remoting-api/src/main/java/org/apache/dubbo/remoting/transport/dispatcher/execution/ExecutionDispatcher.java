@@ -22,6 +22,8 @@ import org.apache.dubbo.remoting.Dispatcher;
 
 /**
  * In addition to sending all the use thread pool processing
+ * 除了接收事件，其他所有的事件都走IO线程
+ * 其他信息，如响应，连接，断开连接， 心跳将直接由I/O线程执行。
  */
 public class ExecutionDispatcher implements Dispatcher {
 

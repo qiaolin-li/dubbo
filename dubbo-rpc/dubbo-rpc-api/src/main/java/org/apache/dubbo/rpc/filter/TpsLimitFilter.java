@@ -42,11 +42,15 @@ import static org.apache.dubbo.rpc.Constants.TPS_LIMIT_RATE_KEY;
 @Activate(group = CommonConstants.PROVIDER, value = TPS_LIMIT_RATE_KEY)
 public class TpsLimitFilter implements Filter {
 
+    /**
+     * TPS限流器
+     */
     private final TPSLimiter tpsLimiter = new DefaultTPSLimiter();
 
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
 
+        // 如果被限流了抛出错误
         if (!tpsLimiter.isAllowable(invoker.getUrl(), invocation)) {
             throw new RpcException(
                     "Failed to invoke service " +

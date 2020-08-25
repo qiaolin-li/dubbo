@@ -59,6 +59,8 @@ public class NettyServer extends AbstractServer implements RemotingServer {
     private static final Logger logger = LoggerFactory.getLogger(NettyServer.class);
     /**
      * the cache for alive worker channel.
+     * 当前存货的客户端连接通道
+     *
      * <ip:port, dubbo channel>
      */
     private Map<String, Channel> channels;
@@ -68,6 +70,7 @@ public class NettyServer extends AbstractServer implements RemotingServer {
     private ServerBootstrap bootstrap;
     /**
      * the boss channel that receive connections and dispatch these to worker channel.
+     * 服务器的通道
      */
 	private io.netty.channel.Channel channel;
 
@@ -77,6 +80,9 @@ public class NettyServer extends AbstractServer implements RemotingServer {
     public NettyServer(URL url, ChannelHandler handler) throws RemotingException {
         // you can customize name and type of client thread pool by THREAD_NAME_KEY and THREADPOOL_KEY in CommonConstants.
         // the handler will be warped: MultiMessageHandler->HeartbeatHandler->handler
+
+        // 可以通过 thradname参数来定义线程的名称
+        // 这个处理器将会被包装，  MultiMessageHandler->HeartbeatHandler->handler ； handler为你自己的处理器
         super(ExecutorUtil.setThreadName(url, SERVER_THREAD_POOL_NAME), ChannelHandlers.wrap(handler, url));
     }
 
@@ -93,31 +99,39 @@ public class NettyServer extends AbstractServer implements RemotingServer {
         workerGroup = new NioEventLoopGroup(getUrl().getPositiveParameter(IO_THREADS_KEY, Constants.DEFAULT_IO_THREADS),
                 new DefaultThreadFactory("NettyServerWorker", true));
 
+        // 通道处理器
         final NettyServerHandler nettyServerHandler = new NettyServerHandler(getUrl(), this);
+
+        // 绑定两个人的关系，本对象的channels和nettyServerHandler中的channels是一个对象，
         channels = nettyServerHandler.getChannels();
 
         bootstrap.group(bossGroup, workerGroup)
-                .channel(NioServerSocketChannel.class)
-                .childOption(ChannelOption.TCP_NODELAY, Boolean.TRUE)
-                .childOption(ChannelOption.SO_REUSEADDR, Boolean.TRUE)
-                .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
-                .childHandler(new ChannelInitializer<NioSocketChannel>() {
-                    @Override
-                    protected void initChannel(NioSocketChannel ch) throws Exception {
-                        // FIXME: should we use getTimeout()?
-                        int idleTimeout = UrlUtils.getIdleTimeout(getUrl());
-                        NettyCodecAdapter adapter = new NettyCodecAdapter(getCodec(), getUrl(), NettyServer.this);
-                        if (getUrl().getParameter(SSL_ENABLED_KEY, false)) {
-                            ch.pipeline().addLast("negotiation",
-                                    SslHandlerInitializer.sslServerHandler(getUrl(), nettyServerHandler));
-                        }
-                        ch.pipeline()
-                                .addLast("decoder", adapter.getDecoder())
-                                .addLast("encoder", adapter.getEncoder())
-                                .addLast("server-idle-handler", new IdleStateHandler(0, 0, idleTimeout, MILLISECONDS))
-                                .addLast("handler", nettyServerHandler);
-                    }
-                });
+            .channel(NioServerSocketChannel.class)
+            .childOption(ChannelOption.TCP_NODELAY, Boolean.TRUE)
+            .childOption(ChannelOption.SO_REUSEADDR, Boolean.TRUE)
+            .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
+            .childHandler(new ChannelInitializer<NioSocketChannel>() {
+                @Override
+                protected void initChannel(NioSocketChannel ch) throws Exception {
+
+                // FIXME: should we use getTimeout()?
+                // 获取通道空闲超时时间
+                int idleTimeout = UrlUtils.getIdleTimeout(getUrl());
+
+                // 解码适配器
+                NettyCodecAdapter adapter = new NettyCodecAdapter(getCodec(), getUrl(), NettyServer.this);
+                if (getUrl().getParameter(SSL_ENABLED_KEY, false)) {
+                    ch.pipeline().addLast("negotiation",
+                            SslHandlerInitializer.sslServerHandler(getUrl(), nettyServerHandler));
+                }
+                ch.pipeline()
+                        .addLast("decoder", adapter.getDecoder())
+                        .addLast("encoder", adapter.getEncoder())
+                        .addLast("server-idle-handler", new IdleStateHandler(0, 0, idleTimeout, MILLISECONDS))
+                        .addLast("handler", nettyServerHandler);
+                }
+            });
+
         // bind
         ChannelFuture channelFuture = bootstrap.bind(getBindAddress());
         channelFuture.syncUninterruptibly();
@@ -136,9 +150,10 @@ public class NettyServer extends AbstractServer implements RemotingServer {
             logger.warn(e.getMessage(), e);
         }
         try {
-            Collection<org.apache.dubbo.remoting.Channel> channels = getChannels();
+            // 关闭所有客户端连接
+            Collection<Channel> channels = getChannels();
             if (channels != null && channels.size() > 0) {
-                for (org.apache.dubbo.remoting.Channel channel : channels) {
+                for (Channel channel : channels) {
                     try {
                         channel.close();
                     } catch (Throwable e) {
@@ -150,6 +165,7 @@ public class NettyServer extends AbstractServer implements RemotingServer {
             logger.warn(e.getMessage(), e);
         }
         try {
+            // 线程池优雅关闭
             if (bootstrap != null) {
                 bossGroup.shutdownGracefully();
                 workerGroup.shutdownGracefully();
@@ -158,6 +174,7 @@ public class NettyServer extends AbstractServer implements RemotingServer {
             logger.warn(e.getMessage(), e);
         }
         try {
+            // 清理通道集合
             if (channels != null) {
                 channels.clear();
             }
@@ -168,7 +185,8 @@ public class NettyServer extends AbstractServer implements RemotingServer {
 
     @Override
     public Collection<Channel> getChannels() {
-        Collection<Channel> chs = new HashSet<Channel>();
+        Collection<Channel> chs = new HashSet<>();
+        // 踢掉已经断开的连接
         for (Channel channel : this.channels.values()) {
             if (channel.isConnected()) {
                 chs.add(channel);
@@ -181,16 +199,19 @@ public class NettyServer extends AbstractServer implements RemotingServer {
 
     @Override
     public Channel getChannel(InetSocketAddress remoteAddress) {
+        // 根据地址获取连接
         return channels.get(NetUtils.toAddressString(remoteAddress));
     }
 
     @Override
     public boolean canHandleIdle() {
+        // 支持处理空闲
         return true;
     }
 
     @Override
     public boolean isBound() {
+        // 是否绑定成功
         return channel.isActive();
     }
 

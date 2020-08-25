@@ -125,12 +125,19 @@ public class ExecutorUtil {
 
     /**
      * append thread name with url address
+     * 追加线程池名称到url中
      *
      * @return new url with updated thread name
      */
     public static URL setThreadName(URL url, String defaultName) {
+
+        // 获取线程名
         String name = url.getParameter(THREAD_NAME_KEY, defaultName);
+
+        // 将线程名加入一个地址的后缀
         name = name + "-" + url.getAddress();
+
+        // 重新设置到url中
         url = url.addParameter(THREAD_NAME_KEY, name);
         return url;
     }

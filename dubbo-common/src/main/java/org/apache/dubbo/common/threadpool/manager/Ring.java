@@ -42,9 +42,11 @@ public class Ring<T> {
         }
 
         if (count.intValue() > Integer.MAX_VALUE - 10000) {
+            // 保证数量恢复到集合长度之内
             count.set(count.get() % itemList.size());
         }
 
+        // 取当前元素的下标
         int index = Math.abs(count.getAndIncrement()) % itemList.size();
         return itemList.get(index);
     }

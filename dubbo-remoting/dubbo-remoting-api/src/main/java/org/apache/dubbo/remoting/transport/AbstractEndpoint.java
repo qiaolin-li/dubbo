@@ -32,29 +32,59 @@ import static org.apache.dubbo.common.constants.CommonConstants.TIMEOUT_KEY;
 
 /**
  * AbstractEndpoint
+ * 端点抽象类
+ *
+ * 实现 Resetable, 支持重置一些属性
+ *
  */
 public abstract class AbstractEndpoint extends AbstractPeer implements Resetable {
 
     private static final Logger logger = LoggerFactory.getLogger(AbstractEndpoint.class);
 
+    /**
+     * 编解码器
+     */
     private Codec2 codec;
 
+    /**
+     *  超时时间
+     */
     private int timeout;
 
+    /**
+     *  连接超时时间
+     */
     private int connectTimeout;
 
     public AbstractEndpoint(URL url, ChannelHandler handler) {
         super(url, handler);
+
+        // 获取编解码器
         this.codec = getChannelCodec(url);
+
+        // timeout 获取超时时间，默认1000毫秒
         this.timeout = url.getPositiveParameter(TIMEOUT_KEY, DEFAULT_TIMEOUT);
+
+        // connection.timeout 连接超时时间，默认3000毫秒
         this.connectTimeout = url.getPositiveParameter(Constants.CONNECT_TIMEOUT_KEY, Constants.DEFAULT_CONNECT_TIMEOUT);
     }
 
+    /**
+     * 通过url获取编解码器
+     * @param url
+     * @return
+     */
     protected static Codec2 getChannelCodec(URL url) {
+
+        // 获取编解码器名称
         String codecName = url.getParameter(Constants.CODEC_KEY, "telnet");
+
+        // 如果该名称的Coder2类型的解码器存在， 获取到对应的解码器
         if (ExtensionLoader.getExtensionLoader(Codec2.class).hasExtension(codecName)) {
             return ExtensionLoader.getExtensionLoader(Codec2.class).getExtension(codecName);
         } else {
+
+            // 如果Coder2不存在，那么可能是Coder的实现，需要适配到Codec2接口
             return new CodecAdapter(ExtensionLoader.getExtensionLoader(Codec.class)
                     .getExtension(codecName));
         }
@@ -62,10 +92,14 @@ public abstract class AbstractEndpoint extends AbstractPeer implements Resetable
 
     @Override
     public void reset(URL url) {
+
+        // 如果已经关闭，那么没办法设置了，抛出异常吧
         if (isClosed()) {
             throw new IllegalStateException("Failed to reset parameters "
                     + url + ", cause: Channel closed. channel: " + getLocalAddress());
         }
+
+        // 如果 timeout、connection.timeout、codec 属性存在，那么重新设置它们
         try {
             if (url.hasParameter(TIMEOUT_KEY)) {
                 int t = url.getParameter(TIMEOUT_KEY, 0);

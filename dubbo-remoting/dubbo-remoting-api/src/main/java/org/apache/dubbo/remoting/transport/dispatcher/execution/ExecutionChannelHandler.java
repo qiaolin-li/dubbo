@@ -33,6 +33,8 @@ import java.util.concurrent.RejectedExecutionException;
 /**
  * Only request message will be dispatched to thread pool. Other messages like response, connect, disconnect,
  * heartbeat will be directly executed by I/O thread.
+ *
+ * 只有请求消息将被分派到线程池。其他信息，如响应，连接，断开连接， 心跳将直接由I/O线程执行。
  */
 public class ExecutionChannelHandler extends WrappedChannelHandler {
 
@@ -42,8 +44,11 @@ public class ExecutionChannelHandler extends WrappedChannelHandler {
 
     @Override
     public void received(Channel channel, Object message) throws RemotingException {
+
+        // 获取线程池
         ExecutorService executor = getPreferredExecutorService(message);
 
+        // 如果是请求的消息，那么使用线程池调度
         if (message instanceof Request) {
             try {
                 executor.execute(new ChannelEventRunnable(channel, handler, ChannelState.RECEIVED, message));
@@ -51,6 +56,7 @@ public class ExecutionChannelHandler extends WrappedChannelHandler {
                 // FIXME: when the thread pool is full, SERVER_THREADPOOL_EXHAUSTED_ERROR cannot return properly,
                 // therefore the consumer side has to wait until gets timeout. This is a temporary solution to prevent
                 // this scenario from happening, but a better solution should be considered later.
+                // 线程池满，需要响应错误给消费者
                 if (t instanceof RejectedExecutionException) {
                     sendFeedback(channel, (Request) message, t);
                 }

@@ -27,6 +27,12 @@ import org.apache.dubbo.remoting.buffer.ChannelBuffer;
 
 import java.io.IOException;
 
+/**
+ * coder2适配器
+ *
+ * 用于将Codec适配到Coder2
+ */
+
 public class CodecAdapter implements Codec2 {
 
     private Codec codec;

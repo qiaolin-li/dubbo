@@ -25,13 +25,13 @@ import java.net.InetSocketAddress;
 
 /**
  * ClientDelegate
+ * 客户端代理类，好像没有啥用，都是去调用被代理对象的方法
  */
 public class ClientDelegate implements Client {
 
     private transient Client client;
 
-    public ClientDelegate() {
-    }
+    public ClientDelegate() { }
 
     public ClientDelegate(Client client) {
         setClient(client);
@@ -50,6 +50,7 @@ public class ClientDelegate implements Client {
 
     @Override
     public void reset(URL url) {
+        // 重置属性
         client.reset(url);
     }
 

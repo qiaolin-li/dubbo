@@ -25,6 +25,7 @@ import java.io.IOException;
 /**
  *  编解码器
  *  TODO 为什么是2呢？ 2.0？
+ *  是的，就是第2版
  */
 
 @SPI
@@ -56,7 +57,7 @@ public interface Codec2 {
      */
     enum DecodeResult {
 
-        // 需要更多的输入， TODO 解决粘包？？？
+        // 需要更多的输入， TODO 解决粘包？ 解决拆包的
         NEED_MORE_INPUT,
 
         // 跳过少量的输入 TODO ？？

@@ -44,20 +44,31 @@ final class NettyChannel extends AbstractChannel {
     private static final Logger logger = LoggerFactory.getLogger(NettyChannel.class);
     /**
      * the cache for netty channel and dubbo channel
+     * 缓存所有Netty通道和Dubbo通道的映射关系
      */
-    private static final ConcurrentMap<Channel, NettyChannel> CHANNEL_MAP = new ConcurrentHashMap<Channel, NettyChannel>();
+    private static final ConcurrentMap<Channel, NettyChannel> CHANNEL_MAP = new ConcurrentHashMap<>();
+
     /**
      * netty channel
+     * netty 通道
      */
     private final Channel channel;
 
-    private final Map<String, Object> attributes = new ConcurrentHashMap<String, Object>();
+    /**
+     * 通道的一些属性信息
+     */
+    private final Map<String, Object> attributes = new ConcurrentHashMap<>();
 
+    /**
+     * 通道是否是激活的（可用的）
+     */
     private final AtomicBoolean active = new AtomicBoolean(false);
 
     /**
      * The constructor of NettyChannel.
-     * It is private so NettyChannel usually create by {@link NettyChannel#getOrAddChannel(Channel, URL, ChannelHandler)}
+     * It is private so NettyChannel usually create by
+     * {@link NettyChannel#getOrAddChannel(Channel, URL, ChannelHandler)}
+     * 私有化构造器，一般我们使用{@link NettyChannel#getOrAddChannel(Channel, URL, ChannelHandler)}来构造
      *
      * @param channel netty channel
      * @param url
@@ -74,19 +85,26 @@ final class NettyChannel extends AbstractChannel {
     /**
      * Get dubbo channel by netty channel through channel cache.
      * Put netty channel into it if dubbo channel don't exist in the cache.
+     * 根据netty的通道获取dubbo的通道，如果缓存中已经存在，那么直接取缓存的，
+     * 如果不存在，那么创建一个
      *
      * @param ch      netty channel
      * @param url
      * @param handler dubbo handler that contain netty's handler
-     * @return
+     * @return dubbo通道
      */
     static NettyChannel getOrAddChannel(Channel ch, URL url, ChannelHandler handler) {
         if (ch == null) {
             return null;
         }
+
+        // 从映射关系中获取
         NettyChannel ret = CHANNEL_MAP.get(ch);
         if (ret == null) {
+            // 如果缓存中没有，那么创建它
             NettyChannel nettyChannel = new NettyChannel(ch, url, handler);
+
+            // 通道激活才会缓存起来
             if (ch.isActive()) {
                 nettyChannel.markActive(true);
                 ret = CHANNEL_MAP.putIfAbsent(ch, nettyChannel);
@@ -104,6 +122,7 @@ final class NettyChannel extends AbstractChannel {
      * @param ch netty channel
      */
     static void removeChannelIfDisconnected(Channel ch) {
+        // 如果通道已经断开，那么删除掉这个通道的缓存信息
         if (ch != null && !ch.isActive()) {
             NettyChannel nettyChannel = CHANNEL_MAP.remove(ch);
             if (nettyChannel != null) {
@@ -112,6 +131,10 @@ final class NettyChannel extends AbstractChannel {
         }
     }
 
+    /**
+     * 从缓存中删除通道
+     * @param ch
+     */
     static void removeChannel(Channel ch) {
         if (ch != null) {
             NettyChannel nettyChannel = CHANNEL_MAP.remove(ch);
@@ -133,13 +156,22 @@ final class NettyChannel extends AbstractChannel {
 
     @Override
     public boolean isConnected() {
+        // 连接未关闭 + 通道是激活状态
         return !isClosed() && active.get();
     }
 
+    /**
+     * 通道是否激活
+     * @return
+     */
     public boolean isActive() {
         return active.get();
     }
 
+    /**
+     * 标记通道激活状态
+     * @param isActive
+     */
     public void markActive(boolean isActive) {
         active.set(isActive);
     }
@@ -154,25 +186,38 @@ final class NettyChannel extends AbstractChannel {
     @Override
     public void send(Object message, boolean sent) throws RemotingException {
         // whether the channel is closed
+        // 防止通道已经关闭
         super.send(message, sent);
 
+        // 是否发送成功
         boolean success = true;
+
+        // 等待超时时间
         int timeout = 0;
         try {
+            // 将数据写入到通道
             ChannelFuture future = channel.writeAndFlush(message);
+
+            // 如果是同步的模式的话，那么需要等待消息发送成功
             if (sent) {
                 // wait timeout ms
+                // 获取发送超时的毫秒数
                 timeout = getUrl().getPositiveParameter(TIMEOUT_KEY, DEFAULT_TIMEOUT);
                 success = future.await(timeout);
             }
+
+            // 如果有一场，那么抛出去
             Throwable cause = future.cause();
             if (cause != null) {
                 throw cause;
             }
         } catch (Throwable e) {
+            // 发送消息出现异常，关闭通道连接
             removeChannelIfDisconnected(channel);
             throw new RemotingException(this, "Failed to send message " + PayloadDropper.getRequestWithoutData(message) + " to " + getRemoteAddress() + ", cause: " + e.getMessage(), e);
         }
+
+        // 没有发送成功，抛异常，如果是异步的话，基本上都是成功的
         if (!success) {
             throw new RemotingException(this, "Failed to send message " + PayloadDropper.getRequestWithoutData(message) + " to " + getRemoteAddress()
                     + "in timeout(" + timeout + "ms) limit");
@@ -192,6 +237,7 @@ final class NettyChannel extends AbstractChannel {
             logger.warn(e.getMessage(), e);
         }
         try {
+            // 清理属性
             attributes.clear();
         } catch (Exception e) {
             logger.warn(e.getMessage(), e);
@@ -200,6 +246,7 @@ final class NettyChannel extends AbstractChannel {
             if (logger.isInfoEnabled()) {
                 logger.info("Close netty channel " + channel);
             }
+            // 关闭通道
             channel.close();
         } catch (Exception e) {
             logger.warn(e.getMessage(), e);

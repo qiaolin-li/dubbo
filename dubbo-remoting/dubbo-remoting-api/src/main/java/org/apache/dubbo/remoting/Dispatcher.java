@@ -23,16 +23,22 @@ import org.apache.dubbo.remoting.transport.dispatcher.all.AllDispatcher;
 
 /**
  * ChannelHandlerWrapper (SPI, Singleton, ThreadSafe)
+ * 调度器，将handler装饰一层带有线程池的handler
+ *
+ * 将 ChannelHandler 的具体操作，调度到线程池中，线程模型
+ *
+ * 详见：http://dubbo.apache.org/zh-cn/docs/user/demos/thread-model.html
  */
 @SPI(AllDispatcher.NAME)
 public interface Dispatcher {
 
     /**
      * dispatch the message to threadpool.
+     * 这里起始是将处理器包了一层带有线程池的处理器，让其异步处理
      *
-     * @param handler
+     * @param handler 处理器
      * @param url
-     * @return channel handler
+     * @return channel handler 带有线程池的处理器, 里面包了参数handler
      */
     @Adaptive({Constants.DISPATCHER_KEY, "dispather", "channel.handler"})
     // The last two parameters are reserved for compatibility with the old configuration

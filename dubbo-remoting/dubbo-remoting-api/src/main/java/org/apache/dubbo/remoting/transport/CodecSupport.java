@@ -35,14 +35,32 @@ import static org.apache.dubbo.common.serialize.Constants.COMPACTED_JAVA_SERIALI
 import static org.apache.dubbo.common.serialize.Constants.JAVA_SERIALIZATION_ID;
 import static org.apache.dubbo.common.serialize.Constants.NATIVE_JAVA_SERIALIZATION_ID;
 
+/**
+ * 编码器支持类
+ * 缓存了编码器的映射关系
+ */
+
 public class CodecSupport {
 
     private static final Logger logger = LoggerFactory.getLogger(CodecSupport.class);
-    private static Map<Byte, Serialization> ID_SERIALIZATION_MAP = new HashMap<Byte, Serialization>();
-    private static Map<Byte, String> ID_SERIALIZATIONNAME_MAP = new HashMap<Byte, String>();
-    private static Map<String, Byte> SERIALIZATIONNAME_ID_MAP = new HashMap<String, Byte>();
+
+    /**
+     * 序列化器Id与序列化器的映射关系
+     */
+    private static Map<Byte, Serialization> ID_SERIALIZATION_MAP = new HashMap<>();
+
+    /**
+     * 序列化器Id与序列化器名称的映射关系
+     */
+    private static Map<Byte, String> ID_SERIALIZATIONNAME_MAP = new HashMap<>();
+
+    /**
+     *  序列化器名称与序列话Id的映射关系
+     */
+    private static Map<String, Byte> SERIALIZATIONNAME_ID_MAP = new HashMap<>();
 
     static {
+        // 加载所有的序列化器，缓存起来
         Set<String> supportedExtensions = ExtensionLoader.getExtensionLoader(Serialization.class).getSupportedExtensions();
         for (String name : supportedExtensions) {
             Serialization serialization = ExtensionLoader.getExtensionLoader(Serialization.class).getExtension(name);
@@ -63,18 +81,34 @@ public class CodecSupport {
     private CodecSupport() {
     }
 
+    /**
+     * 通过序列化的id表示获取序列化器
+     * @param id
+     * @return
+     */
     public static Serialization getSerializationById(Byte id) {
         return ID_SERIALIZATION_MAP.get(id);
     }
 
+    /**
+     * 通过序列化器名称获取到序列化器的id标识
+     * @param name
+     * @return
+     */
     public static byte getIDByName(String name) {
         return SERIALIZATIONNAME_ID_MAP.get(name);
     }
 
+    /**
+     * 通过url获取对应的序列化器
+     * @param url
+     * @return
+     */
     public static Serialization getSerialization(URL url) {
         return ExtensionLoader.getExtensionLoader(Serialization.class).getExtension(
                 url.getParameter(Constants.SERIALIZATION_KEY, Constants.DEFAULT_REMOTING_SERIALIZATION));
     }
+
 
     public static Serialization getSerialization(URL url, Byte id) throws IOException {
         Serialization serialization = getSerializationById(id);
@@ -88,6 +122,15 @@ public class CodecSupport {
         return serialization;
     }
 
+
+    /**
+     * 反序列化数据
+     * @param url
+     * @param is
+     * @param proto
+     * @return
+     * @throws IOException
+     */
     public static ObjectInput deserialize(URL url, InputStream is, byte proto) throws IOException {
         Serialization s = getSerialization(url, proto);
         return s.deserialize(url, is);

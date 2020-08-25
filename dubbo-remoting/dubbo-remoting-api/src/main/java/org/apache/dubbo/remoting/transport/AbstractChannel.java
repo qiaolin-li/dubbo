@@ -24,6 +24,7 @@ import org.apache.dubbo.remoting.utils.PayloadDropper;
 
 /**
  * AbstractChannel
+ * 通道抽象
  */
 public abstract class AbstractChannel extends AbstractPeer implements Channel {
 
@@ -33,6 +34,7 @@ public abstract class AbstractChannel extends AbstractPeer implements Channel {
 
     @Override
     public void send(Object message, boolean sent) throws RemotingException {
+        // 如果已关闭， 抛出异常
         if (isClosed()) {
             throw new RemotingException(this, "Failed to send message "
                     + (message == null ? "" : message.getClass().getName()) + ":" + PayloadDropper.getRequestWithoutData(message)

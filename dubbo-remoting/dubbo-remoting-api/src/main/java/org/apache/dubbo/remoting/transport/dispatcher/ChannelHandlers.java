@@ -23,6 +23,10 @@ import org.apache.dubbo.remoting.Dispatcher;
 import org.apache.dubbo.remoting.exchange.support.header.HeartbeatHandler;
 import org.apache.dubbo.remoting.transport.MultiMessageHandler;
 
+/**
+ *  通道处理器工具类
+ */
+
 public class ChannelHandlers {
 
     private static ChannelHandlers INSTANCE = new ChannelHandlers();
@@ -30,6 +34,13 @@ public class ChannelHandlers {
     protected ChannelHandlers() {
     }
 
+    /**
+     *  包装处理器，让其增强功能
+     *  MultiMessageHandler ==> HeartbeatHandler ==> Dispatcher产生的handler => handler
+     * @param handler 待包装的handler
+     * @param url
+     * @return
+     */
     public static ChannelHandler wrap(ChannelHandler handler, URL url) {
         return ChannelHandlers.getInstance().wrapInternal(handler, url);
     }
@@ -42,6 +53,12 @@ public class ChannelHandlers {
         INSTANCE = instance;
     }
 
+    /**
+     * 包装Handler
+     * @param handler
+     * @param url
+     * @return
+     */
     protected ChannelHandler wrapInternal(ChannelHandler handler, URL url) {
         return new MultiMessageHandler(new HeartbeatHandler(ExtensionLoader.getExtensionLoader(Dispatcher.class)
                 .getAdaptiveExtension().dispatch(handler, url)));
